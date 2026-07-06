@@ -2,7 +2,6 @@
 
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import Navbar from "@/components/Navbar";
 import ChatWindow from "@/components/ChatWindow";
@@ -69,54 +68,11 @@ export default function SwapNegotiation({ params }: PageProps) {
     setError(null);
 
     try {
-      const { data, error } = await supabase
-        .from("swap_requests")
-        .select(`
-          id,
-          sender_id,
-          receiver_id,
-          sender_item_id,
-          receiver_item_id,
-          status,
-          created_at,
-          sender_profile: profiles!swap_requests_sender_id_fkey (
-            id,
-            username,
-            avatar_url
-          ),
-          receiver_profile: profiles!swap_requests_receiver_id_fkey (
-            id,
-            username,
-            avatar_url
-          ),
-          sender_item: items!swap_requests_sender_item_id_fkey (
-            id,
-            title,
-            description,
-            image_url,
-            category,
-            condition,
-            is_coupon,
-            coupon_code,
-            coupon_expiry
-          ),
-          receiver_item: items!swap_requests_receiver_item_id_fkey (
-            id,
-            title,
-            description,
-            image_url,
-            category,
-            condition,
-            is_coupon,
-            coupon_code,
-            coupon_expiry
-          )
-        `)
-        .eq("id", id)
-        .single();
+      const response = await fetch(`/api/swaps/${id}`);
+      if (!response.ok) throw new Error("Failed to load swap details");
 
-      if (error) throw error;
-      setSwap(data as any);
+      const data = await response.json();
+      setSwap(data);
     } catch (err: any) {
       console.error("Error loading swap negotiation:", err);
       setError("Failed to fetch negotiation details.");
@@ -137,23 +93,16 @@ export default function SwapNegotiation({ params }: PageProps) {
     setError(null);
 
     try {
-      // 1. Update the Swap Request status
-      const { error: updateError } = await supabase
-        .from("swap_requests")
-        .update({ status: newStatus })
-        .eq("id", swap.id);
+      // 1. Update the Swap Request status (our backend API automatically handles item status sync transactionally)
+      const response = await fetch(`/api/swaps/${swap.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
 
-      if (updateError) throw updateError;
-
-      // 2. Synchronize item statuses based on state transitions
-      if (newStatus === "Rejected" || newStatus === "Cancelled") {
-        // Revert both items back to "Available"
-        await supabase.from("items").update({ status: "Available" }).eq("id", swap.sender_item_id);
-        await supabase.from("items").update({ status: "Available" }).eq("id", swap.receiver_item_id);
-      } else if (newStatus === "Completed") {
-        // Lock both items as "Swapped" (no longer listed on marketplace)
-        await supabase.from("items").update({ status: "Swapped" }).eq("id", swap.sender_item_id);
-        await supabase.from("items").update({ status: "Swapped" }).eq("id", swap.receiver_item_id);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update status");
       }
 
       // Refresh page data

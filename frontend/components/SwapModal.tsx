@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { X, RefreshCw, AlertCircle, Plus } from "lucide-react";
 import Link from "next/link";
@@ -50,16 +49,17 @@ export default function SwapModal({
     setFetchingItems(true);
     setError(null);
     try {
-      const { data, error } = await supabase
-        .from("items")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("status", "Available");
-
-      if (error) throw error;
-      setMyItems(data || []);
-      if (data && data.length > 0) {
-        setSelectedItemId(data[0].id);
+      const response = await fetch(`/api/items?userId=${user.id}`);
+      if (!response.ok) throw new Error("Failed to fetch listings");
+      
+      const data = await response.json();
+      
+      // Filter out only available items
+      const availableItems = data.filter((item: any) => item.status === "Available");
+      
+      setMyItems(availableItems || []);
+      if (availableItems && availableItems.length > 0) {
+        setSelectedItemId(availableItems[0].id);
       }
     } catch (err: any) {
       console.error("Error fetching items:", err);
@@ -75,27 +75,39 @@ export default function SwapModal({
     setError(null);
 
     try {
-      // 1. Create the swap request
-      const { data, error } = await supabase
-        .from("swap_requests")
-        .insert({
-          sender_id: user.id,
-          receiver_id: receiverId,
-          sender_item_id: selectedItemId,
-          receiver_item_id: receiverItemId,
-          status: "Pending",
-        })
-        .select()
-        .single();
+      // 1. Create the swap request via custom REST API endpoint
+      const response = await fetch("/api/swaps", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          receiverId,
+          senderItemId: selectedItemId,
+          receiverItemId,
+        }),
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to propose swap");
+      }
 
-      // 2. Set the status of BOTH items to "Pending" to prevent other trade requests or modifications
-      // Wait, we don't strictly have to set item status to Pending unless we want to lock them. Let's do it to keep database consistency.
-      await supabase.from("items").update({ status: "Pending" }).eq("id", selectedItemId);
-      await supabase.from("items").update({ status: "Pending" }).eq("id", receiverItemId);
+      const data = await response.json();
 
-      onSuccess(data.id);
+      // 2. Set the status of BOTH items to "Pending" via custom PATCH requests on our backend
+      // We perform PATCH calls to secure database integrity.
+      await fetch(`/api/items/${selectedItemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "Pending" }),
+      });
+
+      await fetch(`/api/items/${receiverItemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "Pending" }),
+      });
+
+      onSuccess(data.swapRequestId);
     } catch (err: any) {
       console.error("Error creating swap:", err);
       setError(err.message || "Failed to propose swap. Please try again.");

@@ -1,28 +1,84 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --font-geist-sans: Inter, system-ui, -apple-system, sans-serif;
-  --font-geist-mono: Menlo, Monaco, Consolas, monospace;
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --border: #e5e5e5;
+  --border-hover: #d4d4d4;
+  --ink: #111111;
+  --ink-muted: #737373;
+  --ink-faint: #a3a3a3;
+  --primary: #0a0a0a;
+  --primary-hover: #262626;
+  --amber: #f59e0b;
+  --amber-bg: #fef3c7;
+  --amber-text: #92400e;
+  --green-bg: #f0fdf4;
+  --green-text: #166534;
+  --blue-bg: #eff6ff;
+  --blue-text: #1d4ed8;
+  --red-bg: #fef2f2;
+  --red-text: #991b1b;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans);
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 0;
+  letter-spacing: -0.005em;
+}
+
+/* ── Scrollbar ─────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+
+/* ── Selection ─────────────────────────────── */
+::selection { background: var(--primary); color: #fff; }
+
+/* ── Focus ─────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Transitions ───────────────────────────── */
+a, button { transition-property: color, background-color, border-color, opacity; transition-duration: 150ms; }
+
+/* ── Utilities ─────────────────────────────── */
+.scrollbar-none { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
+
+/* ── Ticker overlay fade ────────────────────── */
+.ticker-fade {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 10%,
+    black 90%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 10%,
+    black 90%,
+    transparent 100%
+  );
 }

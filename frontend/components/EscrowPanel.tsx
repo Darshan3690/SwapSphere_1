@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import {
   Lock,
@@ -71,11 +70,9 @@ export default function EscrowPanel({
   const fetchDeposits = async (isInitial = false) => {
     if (isInitial) setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("escrow_deposits")
-        .select("*")
-        .eq("swap_request_id", swapRequestId);
-      if (error) throw error;
+      const response = await fetch(`/api/escrow?swapRequestId=${swapRequestId}`);
+      if (!response.ok) throw new Error("Failed to fetch escrow deposits");
+      const data = await response.json();
       setDeposits(data || []);
     } catch (err: any) {
       setError("Failed to load escrow status.");
@@ -135,7 +132,11 @@ export default function EscrowPanel({
   // Auto-fill from listing
   const handleAutoFill = () => {
     if (myCouponCode) setMyCode(myCouponCode.toUpperCase());
-    if (myCouponExpiry) setMyExpiry(myCouponExpiry);
+    if (myCouponExpiry) {
+      // Convert to YYYY-MM-DD for the HTML5 date input
+      const datePart = new Date(myCouponExpiry).toISOString().split("T")[0];
+      setMyExpiry(datePart);
+    }
   };
 
   const handleDeposit = async () => {
@@ -155,24 +156,24 @@ export default function EscrowPanel({
         }
       }
 
-      const { error: insertError } = await supabase.from("escrow_deposits").insert({
-        swap_request_id: swapRequestId,
-        depositor_id: user.id,
-        item_id: myItemId,
-        coupon_code: myCode.trim().toUpperCase(),
-        coupon_expiry: myExpiry || null,
-        verification_status: "pending",
+      const response = await fetch("/api/escrow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          swapRequestId,
+          itemId: myItemId,
+          couponCode: myCode.trim().toUpperCase(),
+          couponExpiry: myExpiry || null,
+          verificationStatus: "pending",
+        }),
       });
 
-      if (insertError) {
-        if (insertError.code === "23505") {
-          setError("You have already deposited your code into escrow.");
-        } else {
-          throw insertError;
-        }
-      } else {
-        await fetchDeposits(false);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to deposit into escrow.");
       }
+
+      await fetchDeposits(false);
     } catch (err: any) {
       setError(err.message || "Failed to deposit into escrow.");
     } finally {
@@ -186,24 +187,24 @@ export default function EscrowPanel({
     setError(null);
 
     try {
-      const { error: insertError } = await supabase.from("escrow_deposits").insert({
-        swap_request_id: swapRequestId,
-        depositor_id: user.id,
-        item_id: myItemId,
-        coupon_code: "PHYSICAL_HANDOVER",
-        coupon_expiry: null,
-        verification_status: "pending",
+      const response = await fetch("/api/escrow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          swapRequestId,
+          itemId: myItemId,
+          couponCode: "PHYSICAL_HANDOVER",
+          couponExpiry: null,
+          verificationStatus: "pending",
+        }),
       });
 
-      if (insertError) {
-        if (insertError.code === "23505") {
-          setError("You have already confirmed.");
-        } else {
-          throw insertError;
-        }
-      } else {
-        await fetchDeposits(false);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to confirm handover.");
       }
+
+      await fetchDeposits(false);
     } catch (err: any) {
       setError(err.message || "Failed to confirm handover.");
     } finally {
@@ -219,12 +220,20 @@ export default function EscrowPanel({
     setError(null);
 
     try {
-      const { error: updateError } = await supabase
-        .from("escrow_deposits")
-        .update({ verification_status: "verified" })
-        .eq("id", myDeposit.id);
+      const response = await fetch("/api/escrow", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: myDeposit.id,
+          verificationStatus: "verified",
+        }),
+      });
 
-      if (updateError) throw updateError;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to confirm receipt.");
+      }
+
       await fetchDeposits(false);
     } catch (err: any) {
       setError(err.message || "Failed to confirm receipt.");

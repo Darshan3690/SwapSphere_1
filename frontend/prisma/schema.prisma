@@ -1,41 +1,102 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
 
 generator client {
   provider = "prisma-client-js"
 }
 
-datasource db {
-  provider = "postgresql"
+model Profile {
+  id        String   @id @map("_id") // Maps to Clerk's user ID string
+  username  String   @unique
+  fullName  String?  @map("full_name")
+  avatarUrl String?  @map("avatar_url")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  items          Item[]
+  sentSwaps      SwapRequest[]   @relation("SenderSwaps")
+  receivedSwaps  SwapRequest[]   @relation("ReceiverSwaps")
+  messages       Message[]
+  escrowDeposits EscrowDeposit[]
+
+  @@map("profiles")
 }
 
-model User {
-  id        String   @id @default(cuid())
-  clerkId   String   @unique
+model Item {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String    @map("user_id")
+  user           Profile   @relation(fields: [userId], references: [id])
+  title          String
+  description    String
+  category       String
+  condition      String
+  imageUrl       String?   @map("image_url")
+  preferredTrade String?   @map("preferred_trade")
+  
+  // Coupon specific fields
+  couponCode     String?   @map("coupon_code")
+  couponExpiry   DateTime? @map("coupon_expiry")
+  isCoupon       Boolean   @default(false) @map("is_coupon")
+  price          Int?      @map("price")
+  status         String    @default("Available") // Available, Pending, Swapped
+  
+  createdAt      DateTime  @default(now()) @map("created_at")
 
-  email     String   @unique
-  name      String?
+  senderSwaps    SwapRequest[]   @relation("SenderItem")
+  receiverSwaps  SwapRequest[]   @relation("ReceiverItem")
+  escrowDeposits EscrowDeposit[]
 
-  createdAt DateTime @default(now())
-
-  vouchers  Voucher[]
+  @@map("items")
 }
 
-model Voucher {
-  id          String   @id @default(cuid())
+model SwapRequest {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  senderId       String   @map("sender_id")
+  sender         Profile  @relation("SenderSwaps", fields: [senderId], references: [id])
+  receiverId     String   @map("receiver_id")
+  receiver       Profile  @relation("ReceiverSwaps", fields: [receiverId], references: [id])
+  
+  senderItemId   String?  @map("sender_item_id") @db.ObjectId
+  senderItem     Item?    @relation("SenderItem", fields: [senderItemId], references: [id])
+  receiverItemId String   @map("receiver_item_id") @db.ObjectId
+  receiverItem   Item     @relation("ReceiverItem", fields: [receiverItemId], references: [id])
+  
+  status         String   @default("Pending") // Pending, Accepted, Rejected, Completed, Cancelled
+  createdAt      DateTime @default(now()) @map("created_at")
 
-  title       String
-  description String?
+  messages       Message[]
+  escrowDeposits EscrowDeposit[]
 
-  category    String
+  @@map("swap_requests")
+}
 
-  expiryDate  DateTime
+model Message {
+  id            String      @id @default(auto()) @map("_id") @db.ObjectId
+  swapRequestId String      @map("swap_request_id") @db.ObjectId
+  swapRequest   SwapRequest @relation(fields: [swapRequestId], references: [id])
+  senderId      String      @map("sender_id")
+  sender         Profile     @relation(fields: [senderId], references: [id])
+  content       String
+  createdAt     DateTime    @default(now()) @map("created_at")
 
-  createdAt   DateTime @default(now())
+  @@map("messages")
+}
 
-  userId      String
-  user        User @relation(fields: [userId], references: [id])
+model EscrowDeposit {
+  id                 String      @id @default(auto()) @map("_id") @db.ObjectId
+  swapRequestId      String      @map("swap_request_id") @db.ObjectId
+  swapRequest        SwapRequest @relation(fields: [swapRequestId], references: [id])
+  depositorId        String      @map("depositor_id")
+  depositor          Profile     @relation(fields: [depositorId], references: [id])
+  itemId             String      @map("item_id") @db.ObjectId
+  item               Item        @relation(fields: [itemId], references: [id])
+  
+  couponCode         String      @map("coupon_code")
+  couponExpiry       DateTime?   @map("coupon_expiry")
+  verificationStatus String      @default("pending") @map("verification_status") // pending, verified, invalid
+  depositedAt        DateTime    @default(now()) @map("deposited_at")
+
+  @@unique([swapRequestId, depositorId])
+  @@map("escrow_deposits")
 }

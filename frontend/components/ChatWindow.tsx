@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { Send, RefreshCw, MessageCircle } from "lucide-react";
 
@@ -33,55 +32,26 @@ export default function ChatWindow({ swapRequestId }: ChatWindowProps) {
 
   const fetchMessages = async () => {
     try {
-      const { data, error } = await supabase
-        .from("messages")
-        .select(`
-          id,
-          swap_request_id,
-          sender_id,
-          content,
-          created_at,
-          profiles (
-            username,
-            avatar_url
-          )
-        `)
-        .eq("swap_request_id", swapRequestId)
-        .order("created_at", { ascending: true });
-
-      if (error) throw error;
-      setMessages((data as any) || []);
+      const response = await fetch(`/api/messages?swapRequestId=${swapRequestId}`);
+      if (!response.ok) throw new Error("Failed to fetch messages");
+      
+      const data = await response.json();
+      setMessages(data || []);
     } catch (err) {
       console.error("Error loading chat messages:", err);
     } finally {
       setLoading(false);
-      scrollToBottom();
     }
   };
 
   useEffect(() => {
     fetchMessages();
 
-    // Subscribe to Realtime messages for this swap request
-    const channel = supabase
-      .channel(`swap_chat_${swapRequestId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `swap_request_id=eq.${swapRequestId}`,
-        },
-        async (payload) => {
-          // When a new message comes in, refetch to get profile details
-          await fetchMessages();
-        }
-      )
-      .subscribe();
+    // Use a lightweight API polling interval to simulate real-time chat
+    const interval = setInterval(fetchMessages, 3000);
 
     return () => {
-      supabase.removeChannel(channel);
+      clearInterval(interval);
     };
   }, [swapRequestId]);
 
@@ -102,13 +72,21 @@ export default function ChatWindow({ swapRequestId }: ChatWindowProps) {
     setNewMessage("");
 
     try {
-      const { error } = await supabase.from("messages").insert({
-        swap_request_id: swapRequestId,
-        sender_id: user.id,
-        content: content,
+      const response = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          swapRequestId,
+          content,
+        }),
       });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to send message");
+      }
+
+      await fetchMessages();
     } catch (err: any) {
       console.error("Error sending message:", err);
       alert("Failed to send message: " + err.message);

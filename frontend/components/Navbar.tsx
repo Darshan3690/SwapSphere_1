@@ -6,16 +6,16 @@ import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 
 export default function Navbar() {
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-zinc-100 bg-white/80 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-40 w-full bg-white border-b border-[#e5e5e5]">
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2.5 group">
+          <Link href="/" className="flex items-center gap-2 group">
             <svg
               viewBox="0 0 24 24"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 text-zinc-900 group-hover:rotate-180 transition-transform duration-500 ease-in-out"
+              className="h-4 w-4 text-[#111] group-hover:rotate-180 transition-transform duration-500"
             >
               <path
                 d="M7 17V4M7 4L3 8M7 4L11 8"
@@ -32,54 +32,57 @@ export default function Navbar() {
                 strokeLinejoin="round"
               />
             </svg>
-            <span className="text-base font-bold tracking-tight text-zinc-900">
+            <span className="text-sm font-semibold tracking-tight text-[#111]">
               swapsphere
             </span>
           </Link>
 
-          {/* Main nav links for logged in users */}
+          {/* Main nav links */}
           <Show when="signed-in">
-            <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-              <Link href="/dashboard" className="hover:text-zinc-900 transition-colors">
+            <nav className="hidden md:flex items-center gap-6">
+              <Link
+                href="/dashboard"
+                className="text-xs font-medium text-[#737373] hover:text-[#111] transition-colors"
+              >
                 Marketplace
               </Link>
-              <Link href="/swaps" className="flex items-center gap-1.5 hover:text-zinc-900 transition-colors">
-                <RefreshCw className="h-3.5 w-3.5" />
+              <Link
+                href="/swaps"
+                className="flex items-center gap-1.5 text-xs font-medium text-[#737373] hover:text-[#111] transition-colors"
+              >
+                <RefreshCw className="h-3 w-3" />
                 My Swaps
               </Link>
             </nav>
           </Show>
         </div>
 
-        {/* User state and actions */}
-        <div className="flex items-center gap-4">
+        {/* Right side */}
+        <div className="flex items-center gap-3">
           <Show when="signed-in">
             <>
-              {/* Add Listing Link */}
               <Link
                 href="/items/new"
-                className="flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-zinc-700 hover:text-zinc-900 hover:bg-zinc-50 hover:border-zinc-300 shadow-xs transition-all duration-200"
+                className="flex items-center gap-1.5 rounded-lg bg-[#0a0a0a] px-3.5 py-1.5 text-xs font-medium text-white hover:bg-[#262626] transition-colors"
               >
-                <Plus className="h-3.5 w-3.5 text-zinc-500" />
-                <span>List Item</span>
+                <Plus className="h-3 w-3" />
+                List a Coupon
               </Link>
-
-              {/* Profile display & UserButton */}
-              <div className="flex items-center gap-3 border-l border-zinc-100 pl-4 h-5">
+              <div className="flex items-center border-l border-[#e5e5e5] pl-3">
                 <UserButton />
               </div>
             </>
           </Show>
           <Show when="signed-out">
-            <div className="flex items-center gap-5">
+            <div className="flex items-center gap-4">
               <SignInButton mode="modal">
-                <button className="text-xs font-semibold uppercase tracking-wider text-zinc-500 hover:text-zinc-900 transition-colors cursor-pointer">
-                  Sign In
+                <button className="text-xs font-medium text-[#737373] hover:text-[#111] transition-colors cursor-pointer">
+                  Sign in
                 </button>
               </SignInButton>
               <SignUpButton mode="modal">
-                <button className="rounded-lg bg-zinc-900 px-4 py-2 text-xs font-semibold text-white hover:bg-zinc-800 transition-all duration-200 shadow-sm cursor-pointer">
-                  Get Started
+                <button className="rounded-lg bg-[#0a0a0a] px-4 py-1.5 text-xs font-medium text-white hover:bg-[#262626] transition-colors cursor-pointer">
+                  Get started
                 </button>
               </SignUpButton>
             </div>

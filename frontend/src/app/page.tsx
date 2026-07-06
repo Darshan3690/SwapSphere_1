@@ -2,98 +2,257 @@
 
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
-import { ArrowRight, RefreshCw, Shield, Zap } from "lucide-react";
+import ScrollVelocity from "@/components/ScrollVelocity";
+import BlurReveal from "@/components/BlurReveal";
+import CountUp from "@/components/CountUp";
+import FadeUp from "@/components/FadeUp";
+import { motion } from "framer-motion";
+import { ArrowRight, RefreshCw, Shield, Zap, ArrowUpRight } from "lucide-react";
 import { Show, SignInButton } from "@clerk/nextjs";
+
+const TICKER_TEXT =
+  "Electronics · Books · Fashion · Home · Games · Sports · Coupons · Vouchers · Digital Goods · Gift Cards";
+
+const STEPS = [
+  {
+    num: "01",
+    icon: <RefreshCw className="h-4 w-4" />,
+    title: "List your coupon",
+    desc: "Upload any unused voucher in under 60 seconds. Set what you'd like in return.",
+  },
+  {
+    num: "02",
+    icon: <Zap className="h-4 w-4" />,
+    title: "Propose a swap",
+    desc: "Browse the marketplace and send a swap offer. Negotiate directly in real-time chat.",
+  },
+  {
+    num: "03",
+    icon: <Shield className="h-4 w-4" />,
+    title: "Exchange securely",
+    desc: "Once both agree, codes are swapped through our secure escrow confirmation flow.",
+  },
+];
+
+const STATS = [
+  { to: 12000, suffix: "+", label: "Coupons listed" },
+  { to: 4800, suffix: "", label: "Swaps completed" },
+  { to: 100, suffix: "%", label: "Cashless" },
+];
 
 export default function Home() {
   return (
-    <div className="flex flex-col min-h-screen bg-zinc-50 text-zinc-900 selection:bg-zinc-900/10">
+    <div className="flex flex-col min-h-screen bg-[#fafafa] text-[#111]">
       <Navbar />
 
-      <main className="flex-1 flex flex-col items-center justify-center relative overflow-hidden">
-        {/* Glow Effects */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-zinc-200/30 rounded-full blur-[140px] pointer-events-none" />
-        <div className="absolute bottom-10 right-10 w-[300px] h-[300px] bg-zinc-100/40 rounded-full blur-[100px] pointer-events-none" />
+      <main className="flex-1 flex flex-col">
 
-        {/* Hero Section */}
-        <section className="mx-auto max-w-4xl px-6 pt-32 pb-20 text-center z-10">
-          <h1 className="text-4xl font-black tracking-tighter sm:text-7xl text-zinc-900 leading-[1.05] tracking-tight">
-            Swap items you have. <br />
-            <span className="text-zinc-400 font-extrabold">
-              Get what you actually need.
-            </span>
-          </h1>
+        {/* ── Hero ───────────────────────────────────────── */}
+        <section
+          className="relative overflow-hidden min-h-[calc(100vh-3.5rem)] flex items-center"
+          style={{
+            backgroundImage: `radial-gradient(circle, #d4d4d4 1px, transparent 1px)`,
+            backgroundSize: "28px 28px",
+          }}
+        >
+          {/* Gradient overlays to fade the dot grid subtly */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(ellipse 80% 55% at 50% 0%, #fafafa 0%, transparent 100%)",
+            }}
+          />
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: "linear-gradient(to bottom, transparent 50%, #fafafa 100%)",
+            }}
+          />
 
-          <p className="mx-auto mt-6 max-w-lg text-sm sm:text-base text-zinc-500 leading-relaxed">
-            Ditch the price tags. swapsphere lets you list items you no longer use and trade them directly with other creators. Fast, secure, and completely cashless.
-          </p>
+          <div className="relative mx-auto max-w-7xl w-full px-6 sm:px-10 py-16 grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-16 items-center">
+            {/* Left */}
+            <div>
 
-          <div className="mt-10 flex flex-col sm:flex-row justify-center items-center gap-4">
-            <Show when="signed-in">
-              <Link
-                href="/dashboard"
-                className="group flex items-center gap-2 rounded-lg bg-zinc-950 px-6 py-3.5 text-xs font-bold text-white shadow-md hover:bg-zinc-850 hover:shadow-lg transition-all duration-300 w-full sm:w-auto justify-center cursor-pointer"
+
+              {/* Headline */}
+              <h1 className="text-5xl sm:text-6xl xl:text-[4.5rem] font-bold text-[#111] leading-[1.06] tracking-[-0.035em] max-w-2xl">
+                <BlurReveal text="The smarter way" delay={0.1} />
+                <br />
+                <span className="inline-flex flex-wrap gap-x-[0.22em]">
+                  <BlurReveal text="to exchange" delay={0.22} className="text-[#111]" />
+                  {" "}
+                  <BlurReveal text="coupons." delay={0.34} className="text-[#b4b4b4]" />
+                </span>
+              </h1>
+
+              {/* Subheading */}
+              <motion.p
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.55, duration: 0.55, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
+                className="mt-6 max-w-sm text-[15px] text-[#737373] leading-[1.75]"
               >
-                <span>Explore Marketplace</span>
-                <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform text-zinc-400" />
-              </Link>
-            </Show>
+                Browse unused vouchers. Propose a direct swap —
+                no cash, no hassle.
+              </motion.p>
+
+              {/* CTAs */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.68, duration: 0.5, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
+                className="mt-10 flex flex-wrap items-center gap-3"
+              >
+                <Show when="signed-in">
+                  <Link
+                    href="/dashboard"
+                    className="group inline-flex items-center gap-2 rounded-lg bg-[#0a0a0a] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#262626] transition-colors"
+                  >
+                    Browse Marketplace
+                    <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+                  </Link>
+                </Show>
+                <Show when="signed-out">
+                  <SignInButton mode="modal">
+                    <button className="group inline-flex items-center gap-2 rounded-lg bg-[#0a0a0a] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#262626] transition-colors cursor-pointer">
+                      Start Swapping Free
+                      <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  </SignInButton>
+                  <Link
+                    href="/dashboard"
+                    className="inline-flex items-center gap-2 rounded-lg border border-[#e5e5e5] bg-white/80 px-5 py-2.5 text-sm font-medium text-[#111] hover:bg-white transition-colors backdrop-blur-sm"
+                  >
+                    Browse first
+                  </Link>
+                </Show>
+              </motion.div>
+            </div>
+
+            {/* Right — animated stats */}
+            <motion.div
+              initial={{ opacity: 0, x: 16 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.5, duration: 0.7, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
+              className="hidden lg:flex flex-col gap-8 border-l border-[#e5e5e5] pl-10"
+            >
+              {STATS.map(({ to, suffix, label }) => (
+                <div key={label}>
+                  <p className="text-4xl font-bold tracking-[-0.04em] text-[#111] tabular-nums">
+                    <CountUp to={to} suffix={suffix} />
+                  </p>
+                  <p className="mt-1 text-[11px] text-[#a3a3a3] font-medium uppercase tracking-wider">{label}</p>
+                </div>
+              ))}
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ── Scroll Velocity Ticker ──────────────────────── */}
+        <div className="ticker-fade border-y border-[#e5e5e5] bg-white py-5 overflow-hidden">
+          <ScrollVelocity
+            text={TICKER_TEXT}
+            default_velocity={4}
+            className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#c4c4c4] select-none"
+          />
+        </div>
+
+        {/* ── How It Works ─────────────────────────────────── */}
+        <section className="mx-auto max-w-7xl w-full px-6 sm:px-10 py-24">
+          {/* Header */}
+          <FadeUp className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-14 border-b border-[#e5e5e5] pb-8">
+            <div>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#a3a3a3]">
+                How it works
+              </span>
+              <h2 className="mt-2 text-2xl sm:text-3xl font-bold tracking-[-0.025em] text-[#111]">
+                Three steps to your next swap.
+              </h2>
+            </div>
             <Show when="signed-out">
               <SignInButton mode="modal">
-                <button className="group flex items-center gap-2 rounded-lg bg-zinc-950 px-6 py-3.5 text-xs font-bold text-white shadow-md hover:bg-zinc-850 hover:shadow-lg transition-all duration-300 w-full sm:w-auto justify-center cursor-pointer">
-                  <span>Start Swapping Now</span>
-                  <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform text-zinc-400" />
+                <button className="group inline-flex items-center gap-1.5 text-xs font-semibold text-[#737373] hover:text-[#111] transition-colors cursor-pointer whitespace-nowrap">
+                  Get started
+                  <ArrowUpRight className="h-3.5 w-3.5 group-hover:translate-x-px group-hover:-translate-y-px transition-transform" />
                 </button>
               </SignInButton>
             </Show>
+          </FadeUp>
+
+          {/* Steps — staggered */}
+          <div className="grid grid-cols-1 gap-px bg-[#e5e5e5] sm:grid-cols-3">
+            {STEPS.map(({ num, icon, title, desc }, i) => (
+              <FadeUp key={num} delay={i * 0.1}>
+                <div className="group h-full bg-white p-8 hover:bg-[#fafafa] transition-colors cursor-default">
+                  <div className="flex items-start justify-between mb-8">
+                    <span className="text-[11px] font-bold text-[#e5e5e5] tracking-widest font-mono">{num}</span>
+                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[#fafafa] border border-[#e5e5e5] text-[#737373] group-hover:bg-[#0a0a0a] group-hover:text-white group-hover:border-[#0a0a0a] transition-all duration-300">
+                      {icon}
+                    </div>
+                  </div>
+                  <h3 className="text-sm font-bold text-[#111] tracking-[-0.01em]">{title}</h3>
+                  <p className="mt-2 text-xs text-[#737373] leading-relaxed">{desc}</p>
+                </div>
+              </FadeUp>
+            ))}
           </div>
         </section>
 
-        {/* Feature Grid */}
-        <section className="mx-auto max-w-6xl px-6 py-12 z-10 w-full">
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {/* Card 1 */}
-            <div className="group rounded-2xl border border-zinc-200/60 bg-white p-6 hover:border-zinc-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.03)] transition-all duration-300">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-50 text-zinc-900 border border-zinc-150 group-hover:bg-zinc-900 group-hover:text-white transition-all duration-300">
-                <RefreshCw className="h-4.5 w-4.5" />
+        {/* ── Full-bleed CTA ────────────────────────────────── */}
+        <section className="bg-[#0a0a0a] relative overflow-hidden">
+          <div
+            className="absolute inset-0 opacity-[0.05] pointer-events-none"
+            style={{
+              backgroundImage: `radial-gradient(circle, #ffffff 1px, transparent 1px)`,
+              backgroundSize: "24px 24px",
+            }}
+          />
+          <FadeUp>
+            <div className="relative mx-auto max-w-7xl w-full px-6 sm:px-10 py-20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-8">
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-[-0.025em]">
+                  Ready to swap smarter?
+                </h2>
+                <p className="mt-2 text-sm text-[#525252]">
+                  Join thousands already trading their coupons for free.
+                </p>
               </div>
-              <h3 className="mt-4 text-sm font-bold text-zinc-900 uppercase tracking-wider">P2P Swaps</h3>
-              <p className="mt-2 text-xs text-zinc-500 leading-relaxed">
-                Offer items from your own inventory in exchange for other listings. Negotiate agreements directly without intermediate currencies.
-              </p>
+              <Show when="signed-out">
+                <SignInButton mode="modal">
+                  <button className="group shrink-0 inline-flex items-center gap-2 rounded-lg bg-white px-6 py-3 text-sm font-semibold text-[#0a0a0a] hover:bg-[#f5f5f5] transition-colors cursor-pointer">
+                    Create free account
+                    <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+                </SignInButton>
+              </Show>
+              <Show when="signed-in">
+                <Link
+                  href="/dashboard"
+                  className="group shrink-0 inline-flex items-center gap-2 rounded-lg bg-white px-6 py-3 text-sm font-semibold text-[#0a0a0a] hover:bg-[#f5f5f5] transition-colors"
+                >
+                  Open Marketplace
+                  <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+                </Link>
+              </Show>
             </div>
-
-            {/* Card 2 */}
-            <div className="group rounded-2xl border border-zinc-200/60 bg-white p-6 hover:border-zinc-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.03)] transition-all duration-300">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-50 text-zinc-900 border border-zinc-150 group-hover:bg-zinc-900 group-hover:text-white transition-all duration-300">
-                <Zap className="h-4.5 w-4.5" />
-              </div>
-              <h3 className="mt-4 text-sm font-bold text-zinc-900 uppercase tracking-wider">Real-time Negotiation</h3>
-              <p className="mt-2 text-xs text-zinc-500 leading-relaxed">
-                Connect and chat instantly with item owners using our integrated real-time negotiation panel. Set meetup coordinates on the fly.
-              </p>
-            </div>
-
-            {/* Card 3 */}
-            <div className="group rounded-2xl border border-zinc-200/60 bg-white p-6 hover:border-zinc-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.03)] transition-all duration-300 sm:col-span-2 lg:col-span-1">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-50 text-zinc-900 border border-zinc-150 group-hover:bg-zinc-900 group-hover:text-white transition-all duration-300">
-                <Shield className="h-4.5 w-4.5" />
-              </div>
-              <h3 className="mt-4 text-sm font-bold text-zinc-900 uppercase tracking-wider">Secure Escrow Auth</h3>
-              <p className="mt-2 text-xs text-zinc-500 leading-relaxed">
-                Rest easy with secure Clerk user credentials, user profiles, and Supabase Row-Level Security safeguarding all transactions.
-              </p>
-            </div>
-          </div>
+          </FadeUp>
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-zinc-100 bg-white py-8 text-center text-xs text-zinc-400 z-10">
-        <div className="mx-auto max-w-7xl px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© 2026 swapsphere. All rights reserved.</p>
-          <p className="flex items-center gap-1.5 font-medium text-zinc-500 uppercase tracking-widest text-[10px]">
-            Join the trade revolution <Zap className="h-3.5 w-3.5 text-zinc-400 fill-zinc-400/20" />
+      {/* ── Footer ──────────────────────────────────────── */}
+      <footer className="border-t border-[#e5e5e5] bg-white py-6">
+        <div className="mx-auto max-w-7xl px-6 sm:px-10 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5 text-[#111]">
+              <path d="M7 17V4M7 4L3 8M7 4L11 8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M17 7V20M17 20L13 16M17 20L21 16" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span className="text-[11px] font-semibold text-[#111]">swapsphere</span>
+          </div>
+          <p className="text-[11px] text-[#a3a3a3]">© 2026 swapsphere. All rights reserved.</p>
+          <p className="text-[11px] font-medium text-[#a3a3a3] uppercase tracking-[0.08em]">
+            Cashless · Trustless · Seamless
           </p>
         </div>
       </footer>

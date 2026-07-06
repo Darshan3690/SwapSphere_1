@@ -1,15 +1,7 @@
 import { Webhook } from "svix";
 import { headers } from "next/headers";
 import { WebhookEvent } from "@clerk/nextjs/server";
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
-
-const connectionString = process.env.DATABASE_URL || "postgresql://placeholder";
-const pool = new Pool({ connectionString });
-const adapter = new PrismaPg(pool);
-
-const prisma = new PrismaClient({ adapter });
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   const WEBHOOK_SECRET = process.env.SVIX_WEBHOOK_SECRET;
@@ -59,21 +51,25 @@ export async function POST(req: Request) {
   const eventType = evt.type;
 
   if (eventType === "user.created") {
-    const { id, email_addresses, first_name, last_name } = evt.data;
+    const { id, email_addresses, username, first_name, last_name, image_url } = evt.data;
     const email = email_addresses[0]?.email_address;
+    
+    // Generate a username if Clerk doesn't provide one
+    const generatedUsername = username || email?.split("@")[0] || `user_${Math.floor(1000 + Math.random() * 9000)}`;
     const name = [first_name, last_name].filter(Boolean).join(" ");
 
     try {
-      await prisma.user.create({
+      await prisma.profile.create({
         data: {
-          clerkId: id,
-          email: email,
-          name: name || null,
+          id: id,
+          username: generatedUsername,
+          fullName: name || null,
+          avatarUrl: image_url || null,
         },
       });
-      return new Response("User created successfully in database", { status: 201 });
+      return new Response("User profile created successfully in MongoDB", { status: 201 });
     } catch (err) {
-      console.error("Error creating user in database:", err);
+      console.error("Error creating profile in database:", err);
       return new Response("Database error", { status: 500 });
     }
   }

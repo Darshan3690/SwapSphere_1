@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Tag, RefreshCw, Ticket, Clock } from "lucide-react";
+import { Tag, Ticket, Clock, ArrowUpDown } from "lucide-react";
 
 export interface Item {
   id: string;
@@ -27,22 +27,6 @@ interface ItemCardProps {
 }
 
 export default function ItemCard({ item }: ItemCardProps) {
-  const getConditionColor = (condition: string) => {
-    switch (condition.toLowerCase()) {
-      case "new":
-        return "bg-emerald-50 text-emerald-700 border-emerald-250";
-      case "like new":
-        return "bg-teal-50 text-teal-700 border-teal-250";
-      case "good":
-        return "bg-sky-50 text-sky-700 border-sky-250";
-      case "fair":
-        return "bg-amber-50 text-amber-700 border-amber-250";
-      default:
-        return "bg-zinc-50 text-zinc-700 border-zinc-250";
-    }
-  };
-
-  // Compute days until expiry for coupons
   const getDaysUntilExpiry = (): number | null => {
     if (!item.is_coupon || !item.coupon_expiry) return null;
     const expiry = new Date(item.coupon_expiry);
@@ -54,110 +38,134 @@ export default function ItemCard({ item }: ItemCardProps) {
   const daysLeft = getDaysUntilExpiry();
   const isExpiringSoon = daysLeft !== null && daysLeft <= 7;
 
+  const statusColors: Record<string, { bg: string; text: string }> = {
+    Available:  { bg: "#f0fdf4", text: "#166534" },
+    Pending:    { bg: "#fef3c7", text: "#92400e" },
+    Swapped:    { bg: "#eff6ff", text: "#1d4ed8" },
+    Cancelled:  { bg: "#fef2f2", text: "#991b1b" },
+  };
+
+  const statusStyle = statusColors[item.status] ?? { bg: "#f5f5f5", text: "#525252" };
+
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-xl border border-zinc-200/80 bg-white transition-all duration-300 hover:-translate-y-1 hover:border-zinc-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.03)]">
-      {/* Coupon badge */}
-      {item.is_coupon && (
-        <span className="absolute top-3 left-3 z-10 rounded-md bg-violet-600 px-2 py-0.5 text-[9px] font-bold text-white uppercase tracking-wider flex items-center gap-1 shadow-sm">
-          <Ticket className="h-2.5 w-2.5" />
-          Coupon
-        </span>
-      )}
-
-      {/* Status badge (non-Available) */}
-      {item.status !== "Available" && (
-        <span className="absolute top-3 right-3 z-10 rounded-md bg-white/95 px-2.5 py-0.5 text-[9px] font-bold text-amber-800 border border-amber-200 shadow-xs uppercase tracking-wider">
-          {item.status}
-        </span>
-      )}
-
-      {/* Image container */}
-      <div className="relative aspect-video w-full overflow-hidden bg-zinc-50 border-b border-zinc-100">
+    <div
+      className="group relative flex flex-col overflow-hidden rounded-lg border border-[#e5e5e5] bg-white transition-all duration-200 hover:border-[#d4d4d4]"
+      style={{ boxShadow: "none" }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 16px rgba(0,0,0,0.05)";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
+      }}
+    >
+      {/* Image */}
+      <div className="relative aspect-square w-full overflow-hidden bg-[#fafafa] border-b border-[#e5e5e5]">
         {item.image_url ? (
           <img
             src={item.image_url}
             alt={item.title}
-            className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-103"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-zinc-50 text-zinc-400">
+          <div className="flex h-full w-full items-center justify-center text-[#d4d4d4]">
             {item.is_coupon ? (
-              <Ticket className="h-8 w-8 stroke-[1.2] text-violet-300" />
+              <Ticket className="h-9 w-9 stroke-[1]" />
             ) : (
-              <Tag className="h-8 w-8 stroke-[1.2]" />
+              <Tag className="h-9 w-9 stroke-[1]" />
             )}
           </div>
         )}
+
+        {/* Coupon badge */}
+        {item.is_coupon && (
+          <span className="absolute top-2.5 left-2.5 z-10 flex items-center gap-1 rounded-full bg-[#0a0a0a] px-2 py-0.5 text-[10px] font-medium text-white">
+            <Ticket className="h-2.5 w-2.5" />
+            Coupon
+          </span>
+        )}
+
+        {/* Status badge (non-Available) */}
+        {item.status !== "Available" && (
+          <span
+            className="absolute top-2.5 right-2.5 z-10 rounded-full px-2 py-0.5 text-[10px] font-medium"
+            style={{ background: statusStyle.bg, color: statusStyle.text }}
+          >
+            {item.status}
+          </span>
+        )}
       </div>
 
-      {/* Card Content */}
-      <div className="flex flex-1 flex-col p-5">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[9px] uppercase tracking-widest text-zinc-450 font-bold">
-            {item.category}
-          </span>
-          <span className={`rounded-md border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${getConditionColor(item.condition)}`}>
-            {item.condition}
-          </span>
-        </div>
+      {/* Content */}
+      <div className="flex flex-1 flex-col p-4">
+        {/* Category */}
+        <span className="text-[10px] font-medium uppercase tracking-widest text-[#a3a3a3]">
+          {item.category}
+        </span>
 
-        <h3 className="text-sm font-bold text-zinc-900 line-clamp-1 group-hover:underline transition-all">
+        {/* Title */}
+        <h3 className="mt-1 text-sm font-semibold text-[#111] leading-snug line-clamp-1">
           <Link href={`/items/${item.id}`}>
             <span className="absolute inset-0" />
             {item.title}
           </Link>
         </h3>
 
-        <p className="mt-1.5 text-xs text-zinc-500 line-clamp-2 leading-relaxed">
+        {/* Description */}
+        <p className="mt-1 text-xs text-[#737373] line-clamp-2 leading-relaxed">
           {item.description}
         </p>
 
-        {/* Expiry warning for coupons */}
+        {/* Expiry badge */}
         {item.is_coupon && daysLeft !== null && (
-          <div className={`mt-2.5 flex items-center gap-1.5 text-[10px] font-semibold rounded-md px-2.5 py-1.5 ${
-            isExpiringSoon
-              ? "bg-red-50 text-red-700 border border-red-200"
-              : "bg-zinc-50 text-zinc-500 border border-zinc-200"
-          }`}>
-            <Clock className="h-3 w-3 flex-shrink-0" />
-            {daysLeft === 0
-              ? "Expires today!"
-              : daysLeft < 0
+          <div
+            className="mt-2.5 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-medium w-fit"
+            style={{
+              background: isExpiringSoon ? "#fef3c7" : "#f5f5f5",
+              color: isExpiringSoon ? "#92400e" : "#737373",
+            }}
+          >
+            <Clock className="h-2.5 w-2.5 flex-shrink-0" />
+            {daysLeft < 0
               ? "Expired"
-              : isExpiringSoon
-              ? `Expires in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}!`
-              : `Valid for ${daysLeft} days`}
+              : daysLeft === 0
+              ? "Expires today"
+              : `Exp. in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}`}
           </div>
         )}
 
-        {/* Preferred Exchange Info */}
-        <div className="mt-auto pt-4 border-t border-zinc-100 flex flex-col gap-2">
-          <div className="flex items-center gap-1.5 text-xs text-zinc-500">
-            <RefreshCw className="h-3.5 w-3.5 text-zinc-450 flex-shrink-0" />
-            <span className="font-semibold text-zinc-450 text-[11px]">Swap:</span>
-            <span className="line-clamp-1 text-zinc-800 font-semibold">{item.preferred_trade || "Open to offers"}</span>
-          </div>
+        {/* Footer */}
+        <div className="mt-auto pt-3 border-t border-[#f5f5f5] flex items-center justify-between mt-3">
+          {/* Condition chip */}
+          <span className="rounded-full border border-[#e5e5e5] px-2 py-0.5 text-[10px] font-medium text-[#737373]">
+            {item.condition}
+          </span>
 
-          {/* User metadata */}
-          <div className="flex items-center justify-between mt-1 pt-2 border-t border-zinc-100/60">
-            <div className="flex items-center gap-1.5">
-              {item.profiles?.avatar_url ? (
-                <img
-                  src={item.profiles.avatar_url}
-                  alt={item.profiles.username}
-                  className="h-4.5 w-4.5 rounded-full object-cover"
-                />
-              ) : (
-                <div className="h-4.5 w-4.5 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center text-[7px] font-bold text-zinc-500">
-                  U
-                </div>
-              )}
-              <span className="text-[10px] text-zinc-400 font-medium">
-                @{item.profiles?.username || "user"}
-              </span>
-            </div>
+          {/* Owner */}
+          <div className="flex items-center gap-1.5">
+            {item.profiles?.avatar_url ? (
+              <img
+                src={item.profiles.avatar_url}
+                alt={item.profiles.username}
+                className="h-4 w-4 rounded-full object-cover"
+              />
+            ) : (
+              <div className="h-4 w-4 rounded-full bg-[#f5f5f5] border border-[#e5e5e5] flex items-center justify-center text-[7px] font-semibold text-[#737373]">
+                {(item.profiles?.username ?? "U")[0].toUpperCase()}
+              </div>
+            )}
+            <span className="text-[10px] text-[#a3a3a3]">
+              @{item.profiles?.username ?? "user"}
+            </span>
           </div>
         </div>
+
+        {/* Swap preference */}
+        {item.preferred_trade && (
+          <div className="mt-2 flex items-center gap-1 text-[10px] text-[#737373]">
+            <ArrowUpDown className="h-2.5 w-2.5 flex-shrink-0" />
+            <span className="line-clamp-1">{item.preferred_trade}</span>
+          </div>
+        )}
       </div>
     </div>
   );

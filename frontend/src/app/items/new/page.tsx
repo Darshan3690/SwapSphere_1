@@ -2,14 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import Navbar from "@/components/Navbar";
-import { PlusCircle, Upload, AlertCircle, RefreshCw, ArrowLeft, Ticket, ToggleLeft, ToggleRight, Info } from "lucide-react";
+import { Upload, AlertCircle, RefreshCw, ArrowLeft, Info } from "lucide-react";
 import Link from "next/link";
 
 const CATEGORIES = ["Electronics", "Books", "Fashion", "Home", "Games", "Sports", "Other"];
 const CONDITIONS = ["New", "Like New", "Good", "Fair", "Poor"];
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <label className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-[#a3a3a3] mb-1.5">
+      {children}
+    </label>
+  );
+}
+
+const inputCls =
+  "w-full rounded-lg bg-white border border-[#e5e5e5] px-4 py-2.5 text-sm text-[#111] placeholder-[#a3a3a3] focus:outline-none focus:border-[#0a0a0a] focus:ring-1 focus:ring-[#0a0a0a] transition-colors";
 
 export default function NewItem() {
   const router = useRouter();
@@ -24,36 +34,48 @@ export default function NewItem() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Coupon-specific state (now mandatory)
   const [couponCode, setCouponCode] = useState("");
   const [couponExpiry, setCouponExpiry] = useState("");
+  const [price, setPrice] = useState("");
 
-  // Authentication guard
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/auth");
-    }
+    if (!authLoading && !user) router.push("/auth");
   }, [user, authLoading, router]);
 
+  // Clean up object URL on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (imagePreview && imagePreview.startsWith("blob:")) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      setError("Please select a valid image file (PNG, JPG, JPEG).");
+      return;
     }
+    // Validate size (5 MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image must be under 5 MB.");
+      return;
+    }
+    setError(null);
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
   };
 
-  // Validate coupon expiry is in the future
-  const isCouponValid = (): boolean => {
-    if (!couponCode.trim()) {
-      setError("Please enter the coupon code.");
-      return false;
-    }
-    if (!couponExpiry) {
-      setError("Please enter the coupon expiry date.");
-      return false;
-    }
+  const validateForm = (): boolean => {
+    if (!title.trim()) { setError("Please enter a coupon/deal name."); return false; }
+    if (!description.trim()) { setError("Please add a description."); return false; }
+    if (!couponCode.trim()) { setError("Please enter the coupon code."); return false; }
+    if (!couponExpiry) { setError("Please set an expiry date."); return false; }
+
     const expiry = new Date(couponExpiry);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -69,55 +91,47 @@ export default function NewItem() {
     if (!user || loading) return;
 
     setError(null);
-    if (!isCouponValid()) return;
+    if (!validateForm()) return;
 
     setLoading(true);
-
     try {
-      let imageUrl = null;
+      let imageUrl: string | null = null;
 
-      // 1. Upload image to Supabase Storage if selected
       if (imageFile) {
-        const fileExt = imageFile.name.split(".").pop();
-        const fileName = `${Math.random()}-${Date.now()}.${fileExt}`;
-        const filePath = `${user.id}/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("item-images")
-          .upload(filePath, imageFile, {
-            cacheControl: "3600",
-            upsert: false,
-          });
-
-        if (uploadError) {
-          throw new Error("Failed to upload image: " + uploadError.message);
+        const formData = new FormData();
+        formData.append("file", imageFile);
+        const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+        if (!uploadRes.ok) {
+          const uploadErr = await uploadRes.json();
+          throw new Error(uploadErr.error || "Failed to upload image.");
         }
-
-        const { data } = supabase.storage.from("item-images").getPublicUrl(filePath);
-        imageUrl = data.publicUrl;
+        const uploadData = await uploadRes.json();
+        imageUrl = uploadData.imageUrl;
       }
 
-      // 2. Insert item into database
-      const { error: insertError } = await supabase.from("items").insert({
-        user_id: user.id,
-        title: title.trim(),
-        description: description.trim(),
-        category,
-        condition,
-        image_url: imageUrl,
-        preferred_trade: preferredTrade.trim() || null,
-        status: "Available",
-        // Coupon fields — now mandatory for all listings
-        is_coupon: true,
-        coupon_code: couponCode.trim().toUpperCase(),
-        coupon_expiry: couponExpiry,
+      const res = await fetch("/api/items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim(),
+          category,
+          condition,
+          imageUrl,
+          preferredTrade: preferredTrade.trim() || null,
+          couponCode: couponCode.trim().toUpperCase(),
+          couponExpiry,
+          price: price.trim() ? parseInt(price.trim(), 10) : null,
+        }),
       });
 
-      if (insertError) throw insertError;
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Failed to create listing.");
+      }
 
       router.push("/dashboard");
     } catch (err: any) {
-      console.error("Error creating item:", err);
       setError(err.message || "Failed to create listing. Please try again.");
     } finally {
       setLoading(false);
@@ -126,219 +140,205 @@ export default function NewItem() {
 
   if (authLoading) {
     return (
-      <div className="flex min-h-screen bg-zinc-50 flex-col items-center justify-center text-zinc-500 gap-2">
-        <RefreshCw className="h-6 w-6 animate-spin text-zinc-850" />
-        <span className="text-xs">Authenticating session...</span>
+      <div className="flex min-h-screen bg-[#fafafa] flex-col items-center justify-center text-[#737373] gap-2">
+        <RefreshCw className="h-4 w-4 animate-spin text-[#111]" />
+        <span className="text-xs">Authenticating...</span>
       </div>
     );
   }
 
   if (!user) return null;
 
-  // Compute min date for expiry picker (tomorrow)
   const minExpiry = new Date();
   minExpiry.setDate(minExpiry.getDate() + 1);
   const minExpiryStr = minExpiry.toISOString().split("T")[0];
 
   return (
-    <div className="flex flex-col min-h-screen bg-zinc-50 text-zinc-900">
+    <div className="flex flex-col min-h-screen bg-[#fafafa] text-[#111]">
       <Navbar />
 
-      <main className="flex-1 mx-auto max-w-2xl px-4 py-8 sm:px-6 w-full z-10">
-        {/* Back Link */}
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-900 transition-colors mb-6"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Back to Marketplace
-        </Link>
-
-        {/* Title */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold flex items-center gap-2 text-zinc-900">
-            <PlusCircle className="h-5.5 w-5.5 text-zinc-900" />
-            <span>List a Coupon for Swap</span>
-          </h1>
-          <p className="text-xs text-zinc-500 mt-1">
-            Fill in the details below to upload a coupon and put it in the SwapSphere marketplace.
+      <main className="flex-1 mx-auto max-w-2xl px-4 sm:px-6 w-full">
+        {/* ── Page header */}
+        <div className="pt-10 pb-6 border-b border-[#e5e5e5]">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-1.5 text-xs text-[#737373] hover:text-[#111] transition-colors mb-4"
+          >
+            <ArrowLeft className="h-3 w-3" />
+            Back to Marketplace
+          </Link>
+          <h1 className="text-2xl font-bold tracking-tight text-[#111]">List a Coupon</h1>
+          <p className="mt-1 text-sm text-[#737373]">
+            Fill in the details to add your coupon to the marketplace.
           </p>
         </div>
 
+        {/* ── Error banner */}
         {error && (
-          <div className="mb-6 flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 p-4 text-xs text-red-700">
-            <AlertCircle className="h-5 w-5 flex-shrink-0" />
+          <div className="mt-6 flex items-start gap-2.5 rounded-lg border border-[#fecaca] bg-[#fef2f2] p-4 text-xs text-[#991b1b]">
+            <AlertCircle className="h-4 w-4 flex-shrink-0 mt-px" />
             <span>{error}</span>
           </div>
         )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-6 bg-white border border-zinc-200 p-6 rounded-2xl shadow-sm">
+        {/* ── Form */}
+        <form onSubmit={handleSubmit} className="py-8 space-y-6">
 
-          <div className="space-y-4 border border-emerald-200 bg-emerald-50/50 rounded-xl p-4">
-            <div className="flex items-start gap-2 text-[10px] text-emerald-700 font-medium">
-              <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+          {/* Coupon details card */}
+          <div className="rounded-lg border border-[#e5e5e5] bg-white p-6 space-y-5">
+            {/* Info banner */}
+            <div className="flex items-start gap-2.5 rounded-md bg-[#fafafa] border border-[#e5e5e5] p-3 text-[11px] text-[#737373]">
+              <Info className="h-3.5 w-3.5 mt-px flex-shrink-0 text-[#a3a3a3]" />
               <span>
-                Your coupon code is stored securely and will only be shared with the other party through the
-                escrow system once both sides have accepted and deposited their codes.
+                Your coupon code is stored securely and only shared with the other party once both sides have confirmed the swap.
               </span>
             </div>
 
             {/* Coupon Code */}
             <div>
-              <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">
-                Coupon Code <span className="text-red-500">*</span>
-              </label>
+              <FieldLabel>Coupon Code <span className="text-[#991b1b] normal-case tracking-normal">*</span></FieldLabel>
               <input
                 type="text"
                 required
                 value={couponCode}
-                onChange={(e) => setCouponCode(e.target.value)}
-                placeholder="e.g. SAVE50, FLAT200OFF, SUMMER25"
-                className="w-full rounded-xl bg-white border border-zinc-200 px-4 py-3 text-xs font-mono text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 uppercase"
-                style={{ textTransform: "uppercase" }}
+                onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                placeholder="e.g. SAVE50, FLAT200OFF"
+                className={`${inputCls} font-mono uppercase`}
               />
             </div>
 
-            {/* Expiry Date */}
+            {/* Expiry */}
             <div>
-              <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">
-                Expiry Date <span className="text-red-500">*</span>
-              </label>
+              <FieldLabel>Expiry Date <span className="text-[#991b1b] normal-case tracking-normal">*</span></FieldLabel>
               <input
                 type="date"
                 required
                 value={couponExpiry}
                 min={minExpiryStr}
-                onChange={(e) => setCouponExpiry(e.target.value)}
-                className="w-full rounded-xl bg-white border border-zinc-200 px-4 py-3 text-xs text-zinc-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                onChange={e => setCouponExpiry(e.target.value)}
+                className={inputCls}
               />
-              <p className="text-[10px] text-zinc-400 mt-1">Only future-dated coupons can be listed. Expired coupons will be rejected.</p>
+              <p className="mt-1.5 text-[11px] text-[#a3a3a3]">
+                Only future-dated coupons can be listed.
+              </p>
             </div>
-          </div>
 
-          {/* Title */}
-          <div>
-            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">
-              Coupon / Deal Name
-            </label>
-            <input
-              type="text"
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Flat 50% Off Powerbank, BookMyShow ₹200 Off"
-              className="w-full rounded-xl bg-white border border-zinc-200 px-4 py-3 text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950"
-            />
-          </div>
-
-          {/* Category & Condition Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Price (Optional) */}
             <div>
-              <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">
-                Category
-              </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full rounded-xl bg-white border border-zinc-200 px-4 py-3.5 text-xs text-zinc-800 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 cursor-pointer"
-              >
-                {CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
+              <FieldLabel>Direct Buy Price (INR) (Optional)</FieldLabel>
+              <input
+                type="number"
+                min="1"
+                value={price}
+                onChange={e => setPrice(e.target.value)}
+                placeholder="e.g. 99, 149 (leave empty if swap-only)"
+                className={inputCls}
+              />
+              <p className="mt-1.5 text-[11px] text-[#a3a3a3]">
+                Set a price if you want other swappers to buy this coupon instantly via Razorpay.
+              </p>
             </div>
+          </div>
+
+          {/* Listing details card */}
+          <div className="rounded-lg border border-[#e5e5e5] bg-white p-6 space-y-5">
+            {/* Title */}
             <div>
-              <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">
-                Condition
-              </label>
-              <select
-                value={condition}
-                onChange={(e) => setCondition(e.target.value)}
-                className="w-full rounded-xl bg-white border border-zinc-200 px-4 py-3.5 text-xs text-zinc-800 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 cursor-pointer"
-              >
-                {CONDITIONS.map((cond) => (
-                  <option key={cond} value={cond}>
-                    {cond}
-                  </option>
-                ))}
-              </select>
+              <FieldLabel>Deal Name <span className="text-[#991b1b] normal-case tracking-normal">*</span></FieldLabel>
+              <input
+                type="text"
+                required
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                maxLength={80}
+                placeholder="e.g. Flat 50% Off Powerbank, BookMyShow ₹200 Off"
+                className={inputCls}
+              />
+            </div>
+
+            {/* Category & Condition row */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <FieldLabel>Category</FieldLabel>
+                <select
+                  value={category}
+                  onChange={e => setCategory(e.target.value)}
+                  className={`${inputCls} cursor-pointer`}
+                >
+                  {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <FieldLabel>Condition</FieldLabel>
+                <select
+                  value={condition}
+                  onChange={e => setCondition(e.target.value)}
+                  className={`${inputCls} cursor-pointer`}
+                >
+                  {CONDITIONS.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div>
+              <FieldLabel>Description <span className="text-[#991b1b] normal-case tracking-normal">*</span></FieldLabel>
+              <textarea
+                required
+                rows={4}
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                placeholder="Describe the coupon — what brand/platform, what discount, any restrictions or T&C."
+                className={`${inputCls} resize-none`}
+              />
+            </div>
+
+            {/* Preferred Trade */}
+            <div>
+              <FieldLabel>Wanted in exchange <span className="text-[#a3a3a3] normal-case tracking-normal font-normal">(optional)</span></FieldLabel>
+              <input
+                type="text"
+                value={preferredTrade}
+                onChange={e => setPreferredTrade(e.target.value)}
+                placeholder="e.g. Swiggy coupon, Zomato discount, any food delivery coupon"
+                className={inputCls}
+              />
             </div>
           </div>
 
-          {/* Description */}
-          <div>
-            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">
-              Description
-            </label>
-            <textarea
-              required
-              rows={4}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe the coupon — what brand/platform, what discount, any restrictions or T&C."
-              className="w-full rounded-xl bg-white border border-zinc-200 px-4 py-3.5 text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 resize-none"
-            />
-          </div>
-
-          {/* Preferred Trade */}
-          <div>
-            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">
-              What do you want in exchange? (Preferred Trade)
-            </label>
-            <input
-              type="text"
-              value={preferredTrade}
-              onChange={(e) => setPreferredTrade(e.target.value)}
-              placeholder="e.g. Swiggy coupon, Zomato discount, any food delivery coupon"
-              className="w-full rounded-xl bg-white border border-zinc-200 px-4 py-3 text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950"
-            />
-          </div>
-
-          {/* Image Upload */}
-          <div>
-            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1.5">
-              Coupon Screenshot / Brand Logo (Optional)
-            </label>
+          {/* Image upload card */}
+          <div className="rounded-lg border border-[#e5e5e5] bg-white p-6">
+            <FieldLabel>Coupon Screenshot / Brand Logo <span className="text-[#a3a3a3] normal-case tracking-normal font-normal">(optional)</span></FieldLabel>
 
             {imagePreview ? (
-              <div className="relative aspect-video rounded-xl overflow-hidden border border-zinc-200 bg-zinc-50 max-w-md">
+              <div className="relative mt-2 aspect-video rounded-lg overflow-hidden border border-[#e5e5e5] bg-[#fafafa] max-w-sm">
                 <img src={imagePreview} alt="Preview" className="h-full w-full object-cover" />
                 <button
                   type="button"
-                  onClick={() => {
-                    setImageFile(null);
-                    setImagePreview(null);
-                  }}
-                  className="absolute top-2 right-2 rounded-lg bg-white/90 px-2.5 py-1 text-[10px] font-semibold text-red-700 border border-red-200 shadow-xs hover:bg-red-50 cursor-pointer"
+                  onClick={() => { setImageFile(null); setImagePreview(null); }}
+                  className="absolute top-2 right-2 rounded-md bg-white/90 px-2.5 py-1 text-[10px] font-semibold text-[#991b1b] border border-[#fecaca] hover:bg-[#fef2f2] transition-colors cursor-pointer"
                 >
                   Remove
                 </button>
               </div>
             ) : (
-              <label className="flex flex-col items-center justify-center border-2 border-dashed border-zinc-200 bg-zinc-50 rounded-xl p-8 hover:bg-zinc-100 hover:border-zinc-300 cursor-pointer transition-all max-w-md">
-                <Upload className="h-8 w-8 text-zinc-400 mb-2 stroke-[1.5]" />
-                <span className="text-xs text-zinc-700 font-semibold">Upload photo</span>
-                <span className="text-[10px] text-zinc-400 mt-1">PNG, JPG, JPEG up to 5MB</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="hidden"
-                />
+              <label className="mt-2 flex flex-col items-center justify-center border-2 border-dashed border-[#e5e5e5] bg-[#fafafa] rounded-lg p-10 hover:bg-white hover:border-[#d4d4d4] cursor-pointer transition-colors">
+                <Upload className="h-7 w-7 text-[#d4d4d4] mb-2.5 stroke-[1.5]" />
+                <span className="text-xs font-semibold text-[#737373]">Click to upload photo</span>
+                <span className="text-[11px] text-[#a3a3a3] mt-1">PNG, JPG, JPEG — max 5 MB</span>
+                <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
               </label>
             )}
           </div>
 
+          {/* Submit */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-4 rounded-xl bg-zinc-900 py-3.5 text-xs font-bold text-white shadow-sm hover:bg-zinc-800 transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+            className="w-full rounded-lg bg-[#0a0a0a] py-3 text-sm font-semibold text-white hover:bg-[#262626] transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
           >
             {loading && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
-            <span>{loading ? "Publishing Listing..." : "Publish Listing"}</span>
+            {loading ? "Publishing..." : "Publish Listing"}
           </button>
         </form>
       </main>
