@@ -23,15 +23,33 @@ export default function Dashboard() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [error, setError] = useState<string | null>(null);
 
+  const [selectedListingType, setSelectedListingType] = useState("All");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+
   useEffect(() => {
     if (!authLoading && !user) router.push("/auth");
   }, [user, authLoading, router]);
 
-  const fetchMarketplaceItems = async () => {
+  const fetchMarketplaceItems = async (
+    cat = selectedCategory,
+    search = searchQuery,
+    type = selectedListingType,
+    min = minPrice,
+    max = maxPrice
+  ) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/items");
+      const params = new URLSearchParams();
+      if (cat && cat !== "All") params.append("category", cat);
+      if (search.trim()) params.append("search", search.trim());
+      if (type && type !== "All") params.append("listingType", type);
+      if (min.trim()) params.append("minValue", min.trim());
+      if (max.trim()) params.append("maxValue", max.trim());
+
+      const res = await fetch(`/api/items?${params.toString()}`);
       if (!res.ok) throw new Error();
       const data = await res.json();
       setItems(data || []);
@@ -59,24 +77,20 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    if (user) { fetchMarketplaceItems(); fetchMyItems(); }
+    if (user) {
+      fetchMarketplaceItems(selectedCategory, searchQuery, selectedListingType, minPrice, maxPrice);
+      fetchMyItems();
+    }
   }, [user]);
 
   useEffect(() => {
-    let result = items;
-    if (selectedCategory !== "All") {
-      result = result.filter(i => i.category.toLowerCase() === selectedCategory.toLowerCase());
+    if (user && activeTab === "marketplace") {
+      const timer = setTimeout(() => {
+        fetchMarketplaceItems(selectedCategory, searchQuery, selectedListingType, minPrice, maxPrice);
+      }, 300);
+      return () => clearTimeout(timer);
     }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(i =>
-        i.title.toLowerCase().includes(q) ||
-        i.description.toLowerCase().includes(q) ||
-        (i.preferred_trade && i.preferred_trade.toLowerCase().includes(q))
-      );
-    }
-    setFilteredItems(result);
-  }, [searchQuery, selectedCategory, items]);
+  }, [searchQuery, selectedCategory, selectedListingType, minPrice, maxPrice, activeTab, user]);
 
   if (authLoading || (!user && authLoading)) {
     return (
@@ -112,15 +126,30 @@ export default function Dashboard() {
           </div>
 
           {activeTab === "marketplace" && (
-            <div className="relative w-full md:max-w-xs">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#a3a3a3]" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search coupons..."
-                className="w-full rounded-lg bg-white border border-[#e5e5e5] pl-9 pr-4 py-2 text-xs text-[#111] placeholder-[#a3a3a3] focus:outline-none focus:border-[#0a0a0a] focus:ring-1 focus:ring-[#0a0a0a] transition-colors"
-              />
+            <div className="flex items-center gap-2 w-full md:max-w-md">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#a3a3a3]" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Search coupons or brands..."
+                  className="w-full rounded-lg bg-white border border-[#e5e5e5] pl-9 pr-4 py-2 text-xs text-[#111] placeholder-[#a3a3a3] focus:outline-none focus:border-[#0a0a0a] focus:ring-1 focus:ring-[#0a0a0a] transition-colors"
+                />
+              </div>
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
+                  showFilters
+                    ? "bg-[#0a0a0a] border-[#0a0a0a] text-white"
+                    : "bg-white border-[#e5e5e5] text-[#737373] hover:text-[#111] hover:border-[#d4d4d4]"
+                }`}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                </svg>
+                <span>Filters</span>
+              </button>
             </div>
           )}
         </div>
@@ -167,6 +196,68 @@ export default function Dashboard() {
                 {cat}
               </button>
             ))}
+          </div>
+        )}
+
+        {/* ── Additional filters panel ───────────────────── */}
+        {activeTab === "marketplace" && showFilters && (
+          <div className="mt-4 p-4 rounded-xl border border-[#e5e5e5] bg-white grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Listing Type Select */}
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-[#a3a3a3] mb-2">
+                Listing Type
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {([
+                  { id: "All", label: "All Types" },
+                  { id: "SWAP_ONLY", label: "Swap Only" },
+                  { id: "SELL_ONLY", label: "Sell Only" },
+                  { id: "SWAP_AND_SELL", label: "Swap & Sell" }
+                ] as const).map(type => (
+                  <button
+                    key={type.id}
+                    onClick={() => setSelectedListingType(type.id)}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-medium border transition-all cursor-pointer ${
+                      selectedListingType === type.id
+                        ? "bg-[#0a0a0a] border-[#0a0a0a] text-white"
+                        : "bg-white border-[#e5e5e5] text-[#737373] hover:border-[#d4d4d4] hover:text-[#111]"
+                    }`}
+                  >
+                    {type.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Price range */}
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-[#a3a3a3] mb-2">
+                Price Range (INR)
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  placeholder="Min"
+                  value={minPrice}
+                  onChange={e => setMinPrice(e.target.value)}
+                  className="w-full rounded-lg bg-white border border-[#e5e5e5] px-3 py-1.5 text-xs text-[#111] focus:outline-none focus:border-[#0a0a0a]"
+                />
+                <span className="text-[#a3a3a3] text-xs">to</span>
+                <input
+                  type="number"
+                  placeholder="Max"
+                  value={maxPrice}
+                  onChange={e => setMaxPrice(e.target.value)}
+                  className="w-full rounded-lg bg-white border border-[#e5e5e5] px-3 py-1.5 text-xs text-[#111] focus:outline-none focus:border-[#0a0a0a]"
+                />
+                <button
+                  onClick={() => { setMinPrice(""); setMaxPrice(""); }}
+                  className="text-xs text-[#737373] hover:text-[#991b1b] font-medium px-2 py-1.5 transition-colors cursor-pointer"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

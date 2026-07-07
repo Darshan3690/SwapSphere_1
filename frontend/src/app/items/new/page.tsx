@@ -38,6 +38,11 @@ export default function NewItem() {
   const [couponExpiry, setCouponExpiry] = useState("");
   const [price, setPrice] = useState("");
 
+  const [listingType, setListingType] = useState<"SWAP_ONLY" | "SELL_ONLY" | "SWAP_AND_SELL">("SWAP_ONLY");
+  const [sellingPrice, setSellingPrice] = useState("");
+  const [brand, setBrand] = useState("");
+  const [voucherValue, setVoucherValue] = useState("");
+
   useEffect(() => {
     if (!authLoading && !user) router.push("/auth");
   }, [user, authLoading, router]);
@@ -75,6 +80,7 @@ export default function NewItem() {
     if (!description.trim()) { setError("Please add a description."); return false; }
     if (!couponCode.trim()) { setError("Please enter the coupon code."); return false; }
     if (!couponExpiry) { setError("Please set an expiry date."); return false; }
+    if (listingType !== "SWAP_ONLY" && !sellingPrice.trim()) { setError("Please enter a selling price."); return false; }
 
     const expiry = new Date(couponExpiry);
     const today = new Date();
@@ -118,10 +124,14 @@ export default function NewItem() {
           category,
           condition,
           imageUrl,
-          preferredTrade: preferredTrade.trim() || null,
+          preferredTrade: listingType !== "SELL_ONLY" ? (preferredTrade.trim() || null) : null,
           couponCode: couponCode.trim().toUpperCase(),
           couponExpiry,
-          price: price.trim() ? parseInt(price.trim(), 10) : null,
+          price: listingType !== "SWAP_ONLY" && sellingPrice.trim() ? parseInt(sellingPrice.trim(), 10) : null,
+          listingType,
+          sellingPrice: listingType !== "SWAP_ONLY" && sellingPrice.trim() ? parseInt(sellingPrice.trim(), 10) : null,
+          brand: brand.trim() || null,
+          voucherValue: voucherValue.trim() ? parseInt(voucherValue.trim(), 10) : null,
         }),
       });
 
@@ -194,6 +204,20 @@ export default function NewItem() {
               </span>
             </div>
 
+            {/* Listing Type */}
+            <div>
+              <FieldLabel>Listing Type <span className="text-[#991b1b] normal-case tracking-normal">*</span></FieldLabel>
+              <select
+                value={listingType}
+                onChange={e => setListingType(e.target.value as any)}
+                className={`${inputCls} cursor-pointer`}
+              >
+                <option value="SWAP_ONLY">Swap Only (Trade for another coupon)</option>
+                <option value="SELL_ONLY">Sell Only (Purchase via Razorpay)</option>
+                <option value="SWAP_AND_SELL">Swap &amp; Sell (Both options available)</option>
+              </select>
+            </div>
+
             {/* Coupon Code */}
             <div>
               <FieldLabel>Coupon Code <span className="text-[#991b1b] normal-case tracking-normal">*</span></FieldLabel>
@@ -223,21 +247,24 @@ export default function NewItem() {
               </p>
             </div>
 
-            {/* Price (Optional) */}
-            <div>
-              <FieldLabel>Direct Buy Price (INR) (Optional)</FieldLabel>
-              <input
-                type="number"
-                min="1"
-                value={price}
-                onChange={e => setPrice(e.target.value)}
-                placeholder="e.g. 99, 149 (leave empty if swap-only)"
-                className={inputCls}
-              />
-              <p className="mt-1.5 text-[11px] text-[#a3a3a3]">
-                Set a price if you want other swappers to buy this coupon instantly via Razorpay.
-              </p>
-            </div>
+            {/* Selling Price (Conditional) */}
+            {listingType !== "SWAP_ONLY" && (
+              <div>
+                <FieldLabel>Selling Price (INR) <span className="text-[#991b1b] normal-case tracking-normal">*</span></FieldLabel>
+                <input
+                  type="number"
+                  min="1"
+                  required
+                  value={sellingPrice}
+                  onChange={e => setSellingPrice(e.target.value)}
+                  placeholder="e.g. 99, 149"
+                  className={inputCls}
+                />
+                <p className="mt-1.5 text-[11px] text-[#a3a3a3]">
+                  The price other swappers will pay to buy this coupon instantly.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Listing details card */}
@@ -280,6 +307,31 @@ export default function NewItem() {
               </div>
             </div>
 
+            {/* Brand & Voucher Value row */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <FieldLabel>Brand / Platform</FieldLabel>
+                <input
+                  type="text"
+                  value={brand}
+                  onChange={e => setBrand(e.target.value)}
+                  placeholder="e.g. Amazon, Swiggy, Uber"
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <FieldLabel>Voucher Worth Value (INR)</FieldLabel>
+                <input
+                  type="number"
+                  min="1"
+                  value={voucherValue}
+                  onChange={e => setVoucherValue(e.target.value)}
+                  placeholder="e.g. 500, 1000"
+                  className={inputCls}
+                />
+              </div>
+            </div>
+
             {/* Description */}
             <div>
               <FieldLabel>Description <span className="text-[#991b1b] normal-case tracking-normal">*</span></FieldLabel>
@@ -294,16 +346,18 @@ export default function NewItem() {
             </div>
 
             {/* Preferred Trade */}
-            <div>
-              <FieldLabel>Wanted in exchange <span className="text-[#a3a3a3] normal-case tracking-normal font-normal">(optional)</span></FieldLabel>
-              <input
-                type="text"
-                value={preferredTrade}
-                onChange={e => setPreferredTrade(e.target.value)}
-                placeholder="e.g. Swiggy coupon, Zomato discount, any food delivery coupon"
-                className={inputCls}
-              />
-            </div>
+            {listingType !== "SELL_ONLY" && (
+              <div>
+                <FieldLabel>Wanted in exchange <span className="text-[#a3a3a3] normal-case tracking-normal font-normal">(optional)</span></FieldLabel>
+                <input
+                  type="text"
+                  value={preferredTrade}
+                  onChange={e => setPreferredTrade(e.target.value)}
+                  placeholder="e.g. Swiggy coupon, Zomato discount, any food delivery coupon"
+                  className={inputCls}
+                />
+              </div>
+            )}
           </div>
 
           {/* Image upload card */}

@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import Navbar from "@/components/Navbar";
 import ChatWindow from "@/components/ChatWindow";
-import { RefreshCw, AlertCircle, ArrowLeft, Check, X, ShieldAlert, Sparkles } from "lucide-react";
+import { RefreshCw, AlertCircle, ArrowLeft, Check, X, ShieldAlert, Sparkles, Star, CheckCircle2 } from "lucide-react";
 import EscrowPanel from "@/components/EscrowPanel";
+import ReviewModal from "@/components/ReviewModal";
 import Link from "next/link";
 
 interface Profile {
@@ -54,6 +55,7 @@ export default function SwapNegotiation({ params }: PageProps) {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
 
   // Authentication Guard
   useEffect(() => {
@@ -314,6 +316,22 @@ export default function SwapNegotiation({ params }: PageProps) {
                     <span>Complete Exchange &amp; Trade</span>
                   </button>
                 </div>
+              ) : swap.status === "Completed" ? (
+                <div className="space-y-4">
+                  <div className="flex items-start gap-2.5 rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-xs text-zinc-600 leading-relaxed">
+                    <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+                    <span>
+                      This exchange is complete! The items have been successfully swapped.
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setIsReviewOpen(true)}
+                    className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 text-white hover:bg-amber-600 py-3.5 text-xs font-bold shadow-sm transition-all cursor-pointer border border-amber-500"
+                  >
+                    <Star className="h-4 w-4 fill-white text-white" />
+                    <span>Rate @{partnerProfile.username}</span>
+                  </button>
+                </div>
               ) : (
                 <div className="flex items-start gap-2.5 rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-xs text-zinc-500 leading-relaxed">
                   <ShieldAlert className="h-5 w-5 flex-shrink-0" />
@@ -351,6 +369,13 @@ export default function SwapNegotiation({ params }: PageProps) {
             />
           </div>
         )}
+        {/* Review Modal */}
+        <ReviewModal
+          isOpen={isReviewOpen}
+          onClose={() => setIsReviewOpen(false)}
+          revieweeId={partnerProfile.id}
+          revieweeUsername={partnerProfile.username}
+        />
       </main>
     </div>
   );

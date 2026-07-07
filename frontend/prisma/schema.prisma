@@ -20,6 +20,18 @@ model Profile {
   messages       Message[]
   escrowDeposits EscrowDeposit[]
 
+  referralCode   String?         @unique @map("referral_code")
+  referredBy     String?         @map("referred_by")
+  freeBoosts     Int             @default(0) @map("free_boosts")
+  creditBalance  Float           @default(0.0) @map("credit_balance")
+  role           String          @default("USER")
+
+  reviewsGiven    Review[]       @relation("Reviewer")
+  reviewsReceived Review[]       @relation("Reviewee")
+  notifications   Notification[]
+  referralsMade   Referral[]     @relation("Referrer")
+  referralReceived Referral[]    @relation("Referee")
+
   @@map("profiles")
 }
 
@@ -46,6 +58,14 @@ model Item {
   senderSwaps    SwapRequest[]   @relation("SenderItem")
   receiverSwaps  SwapRequest[]   @relation("ReceiverItem")
   escrowDeposits EscrowDeposit[]
+
+  listingType    String    @default("SWAP_ONLY") @map("listing_type") // SWAP_ONLY, SELL_ONLY, SWAP_AND_SELL
+  sellingPrice   Int?      @map("selling_price")
+  brand          String?
+  voucherValue   Int?      @map("voucher_value")
+  categoryId     String?   @db.ObjectId @map("category_id")
+  categoryRel    Category? @relation(fields: [categoryId], references: [id])
+  boostedUntil   DateTime? @map("boosted_until")
 
   @@map("items")
 }
@@ -99,4 +119,51 @@ model EscrowDeposit {
 
   @@unique([swapRequestId, depositorId])
   @@map("escrow_deposits")
+}
+
+model Category {
+  id    String @id @default(auto()) @map("_id") @db.ObjectId
+  name  String @unique
+  items Item[]
+
+  @@map("categories")
+}
+
+model Review {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  rating     Int      // 1 to 5 stars
+  comment    String?
+  reviewerId String   @map("reviewer_id")
+  reviewer   Profile  @relation("Reviewer", fields: [reviewerId], references: [id])
+  revieweeId String   @map("reviewee_id")
+  reviewee   Profile  @relation("Reviewee", fields: [revieweeId], references: [id])
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("reviews")
+}
+
+model Notification {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @map("user_id")
+  user      Profile  @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("notifications")
+}
+
+model Referral {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  referrerId  String   @map("referrer_id")
+  referrer    Profile  @relation("Referrer", fields: [referrerId], references: [id])
+  refereeId   String   @map("referee_id")
+  referee     Profile  @relation("Referee", fields: [refereeId], references: [id])
+  status      String   @default("PENDING") // PENDING, COMPLETED
+  rewardType  String   @map("reward_type") // FREE_BOOST, COMMISSION_DISCOUNT, CREDIT
+  rewardValue Float    @map("reward_value")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("referrals")
 }

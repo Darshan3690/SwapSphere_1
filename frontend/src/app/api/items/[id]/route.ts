@@ -36,6 +36,12 @@ export async function GET(
       user_id: item.userId,
       image_url: item.imageUrl,
       preferred_trade: item.preferredTrade,
+      listing_type: item.listingType,
+      selling_price: item.sellingPrice,
+      brand: item.brand,
+      voucher_value: item.voucherValue,
+      category_id: item.categoryId,
+      boosted_until: item.boostedUntil ? item.boostedUntil.toISOString() : null,
       created_at: item.createdAt.toISOString(),
       profiles: item.user
         ? {
@@ -75,7 +81,22 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { title, description, category, condition, preferredTrade, status, price, couponCode, couponExpiry } = body;
+    const {
+      title,
+      description,
+      category,
+      condition,
+      preferredTrade,
+      status,
+      price,
+      couponCode,
+      couponExpiry,
+      listingType,
+      sellingPrice,
+      brand,
+      voucherValue,
+      categoryId
+    } = body;
 
     const parsedPrice = price !== undefined
       ? (price === null || price === "" ? null : parseInt(String(price), 10))
@@ -117,6 +138,11 @@ export async function PATCH(
         price: parsedPrice,
         couponCode: couponCode !== undefined ? (couponCode ? couponCode.trim().toUpperCase() : null) : undefined,
         couponExpiry: parsedExpiry,
+        listingType: listingType !== undefined ? listingType : undefined,
+        sellingPrice: sellingPrice !== undefined ? (sellingPrice === null || sellingPrice === "" ? null : parseInt(String(sellingPrice), 10)) : undefined,
+        brand: brand !== undefined ? brand : undefined,
+        voucherValue: voucherValue !== undefined ? (voucherValue === null || voucherValue === "" ? null : parseInt(String(voucherValue), 10)) : undefined,
+        categoryId: categoryId !== undefined ? categoryId : undefined,
       },
     });
 

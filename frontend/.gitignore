@@ -47,3 +47,6 @@ next-env.d.ts
 
 # user uploads
 public/uploads/
+scratch/
+test-mongo.js
+test-prisma.js
