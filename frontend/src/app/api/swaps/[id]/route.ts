@@ -182,6 +182,52 @@ export async function PATCH(
         });
       }
 
+      // 3. Create Notification alerts based on the swap action
+      try {
+        const actingProfile = await tx.profile.findUnique({ where: { id: userId } });
+        const actingUsername = actingProfile?.username || "A swapper";
+
+        if (status === "Accepted") {
+          await tx.notification.create({
+            data: {
+              userId: swap.senderId,
+              title: "Swap Offer Accepted!",
+              message: `@${actingUsername} accepted your swap proposal! Head to the negotiation room to complete the trade.`,
+              isRead: false,
+            },
+          });
+        } else if (status === "Rejected") {
+          await tx.notification.create({
+            data: {
+              userId: swap.senderId,
+              title: "Swap Offer Declined",
+              message: `@${actingUsername} declined your swap proposal. Your item has been returned to the marketplace.`,
+              isRead: false,
+            },
+          });
+        } else if (status === "Completed") {
+          // Notify both users
+          await tx.notification.create({
+            data: {
+              userId: swap.senderId,
+              title: "Swap Trade Completed",
+              message: `Your trade with @${swap.receiverId === userId ? actingUsername : "your partner"} is complete! View escrow details for your code.`,
+              isRead: false,
+            },
+          });
+          await tx.notification.create({
+            data: {
+              userId: swap.receiverId,
+              title: "Swap Trade Completed",
+              message: `Your trade with @${swap.senderId === userId ? actingUsername : "your partner"} is complete! View escrow details for your code.`,
+              isRead: false,
+            },
+          });
+        }
+      } catch (notiErr) {
+        console.error("Failed to create swap status notification:", notiErr);
+      }
+
       return updated;
     });
 

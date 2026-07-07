@@ -78,6 +78,23 @@ export async function POST(
       },
     });
 
+    // Trigger Notification for the seller
+    try {
+      const buyerProfile = await prisma.profile.findUnique({ where: { id: userId } });
+      const buyerName = buyerProfile?.username || "A buyer";
+
+      await prisma.notification.create({
+        data: {
+          userId: item.userId,
+          title: "Voucher Purchased Directly!",
+          message: `@${buyerName} purchased your listing: "${item.title}" for ₹${item.price || 0}.`,
+          isRead: false,
+        },
+      });
+    } catch (notiErr) {
+      console.error("Failed to create direct purchase notification:", notiErr);
+    }
+
     // Securely return the coupon details ONLY after successful purchase
     return NextResponse.json({
       success: true,

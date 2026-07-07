@@ -6,39 +6,68 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const userIdFilter = url.searchParams.get("userId");
+    const categoryFilter = url.searchParams.get("category");
+    const searchFilter = url.searchParams.get("search");
+    const listingTypeFilter = url.searchParams.get("listingType");
+    const minValueFilter = url.searchParams.get("minValue");
+    const maxValueFilter = url.searchParams.get("maxValue");
 
-    let items;
+    const whereClause: any = {};
+
     if (userIdFilter) {
-      // Fetch only listings created by the specified user (e.g. for "My Listings" tab)
-      items = await prisma.item.findMany({
-        where: { userId: userIdFilter },
-        include: {
-          user: {
-            select: {
-              id: true,
-              username: true,
-              avatarUrl: true,
-            },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-      });
+      whereClause.userId = userIdFilter;
     } else {
-      // Fetch all items available in the marketplace
-      items = await prisma.item.findMany({
-        where: { status: "Available" },
-        include: {
-          user: {
-            select: {
-              id: true,
-              username: true,
-              avatarUrl: true,
-            },
+      whereClause.status = "Available";
+    }
+
+    if (categoryFilter && categoryFilter !== "All") {
+      whereClause.category = { equals: categoryFilter, mode: "insensitive" };
+    }
+
+    if (listingTypeFilter && listingTypeFilter !== "All") {
+      whereClause.listingType = listingTypeFilter;
+    }
+
+    if (minValueFilter || maxValueFilter) {
+      const min = minValueFilter ? parseInt(minValueFilter, 10) : undefined;
+      const max = maxValueFilter ? parseInt(maxValueFilter, 10) : undefined;
+      
+      whereClause.sellingPrice = {};
+      if (min !== undefined && !isNaN(min)) {
+        whereClause.sellingPrice.gte = min;
+      }
+      if (max !== undefined && !isNaN(max)) {
+        whereClause.sellingPrice.lte = max;
+      }
+    }
+
+    if (searchFilter && searchFilter.trim()) {
+      const s = searchFilter.trim();
+      whereClause.AND = [
+        ...(whereClause.AND || []),
+        {
+          OR: [
+            { title: { contains: s, mode: "insensitive" } },
+            { brand: { contains: s, mode: "insensitive" } },
+            { description: { contains: s, mode: "insensitive" } },
+          ],
+        },
+      ];
+    }
+
+    const items = await prisma.item.findMany({
+      where: whereClause,
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            avatarUrl: true,
           },
         },
-        orderBy: { createdAt: "desc" },
-      });
-    }
+      },
+      orderBy: { createdAt: "desc" },
+    });
 
     const { userId } = await auth();
 
@@ -60,6 +89,12 @@ export async function GET(request: Request) {
         coupon_code: isOwner ? item.couponCode : undefined,
         coupon_expiry: item.couponExpiry ? item.couponExpiry.toISOString() : null,
         created_at: item.createdAt.toISOString(),
+        listing_type: item.listingType,
+        selling_price: item.sellingPrice,
+        brand: item.brand,
+        voucher_value: item.voucherValue,
+        category_id: item.categoryId,
+        boosted_until: item.boostedUntil ? item.boostedUntil.toISOString() : null,
         profiles: item.user
           ? {
               id: item.user.id,
@@ -95,6 +130,11 @@ export async function POST(request: Request) {
       couponCode,
       couponExpiry,
       price,
+      listingType,
+      sellingPrice,
+      brand,
+      voucherValue,
+      categoryId,
     } = body;
 
     // Server-side validation
@@ -123,7 +163,25 @@ export async function POST(request: Request) {
       });
     }
 
-    const parsedPrice = price ? parseInt(price, 10) : null;
+    // Resilience layer for Category model
+    let finalCategoryId = categoryId;
+    if (!finalCategoryId && category) {
+      const dbCategory = await prisma.category.findFirst({
+        where: { name: { equals: category, mode: "insensitive" } },
+      });
+      if (dbCategory) {
+        finalCategoryId = dbCategory.id;
+      } else {
+        const newCat = await prisma.category.create({
+          data: { name: category },
+        });
+        finalCategoryId = newCat.id;
+      }
+    }
+
+    const parsedPrice = price ? parseInt(String(price), 10) : null;
+    const parsedSellingPrice = sellingPrice ? parseInt(String(sellingPrice), 10) : null;
+    const parsedVoucherValue = voucherValue ? parseInt(String(voucherValue), 10) : null;
 
     // Create new listing in MongoDB
     const newItem = await prisma.item.create({
@@ -140,6 +198,11 @@ export async function POST(request: Request) {
         price: parsedPrice,
         couponCode: couponCode.trim().toUpperCase(),
         couponExpiry: expiryDate,
+        listingType: listingType || "SWAP_ONLY",
+        sellingPrice: parsedSellingPrice !== null ? parsedSellingPrice : parsedPrice,
+        brand: brand?.trim() || null,
+        voucherValue: parsedVoucherValue,
+        categoryId: finalCategoryId || null,
       },
     });
 

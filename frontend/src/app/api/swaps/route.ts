@@ -135,9 +135,24 @@ export async function POST(request: Request) {
       },
     });
 
-    // Update items to Pending status so they aren't proposed in multiple swaps concurrently
-    // Wait: your app updates statuses during acceptance, but updating to Pending is also common.
-    // The current frontend updates status during acceptance, let's keep it clean.
+    // Trigger Notification for the receiver
+    try {
+      const senderProfile = await prisma.profile.findUnique({ where: { id: userId } });
+      const senderName = senderProfile?.username || "A user";
+      const itemDetails = await prisma.item.findUnique({ where: { id: receiverItemId } });
+      const itemName = itemDetails?.title || "your listing";
+
+      await prisma.notification.create({
+        data: {
+          userId: receiverId,
+          title: "New Swap Offered",
+          message: `@${senderName} proposed a swap for your item: "${itemName}".`,
+          isRead: false,
+        },
+      });
+    } catch (notiErr) {
+      console.error("Failed to create Swap Offered notification:", notiErr);
+    }
 
     return NextResponse.json({ swapRequestId: swapRequest.id }, { status: 201 });
   } catch (error: any) {

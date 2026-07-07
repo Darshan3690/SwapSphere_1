@@ -1,10 +1,76 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, RefreshCw } from "lucide-react";
+import { Plus, RefreshCw, Bell } from "lucide-react";
 import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 
+interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
 export default function Navbar() {
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isOpen, setIsOpen] = useState(false);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch("/api/notifications");
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data.notifications || []);
+        setUnreadCount(data.unreadCount || 0);
+      }
+    } catch (err) {
+      // quiet
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 7000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const markAsRead = async (id: string) => {
+    try {
+      const res = await fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notificationId: id }),
+      });
+      if (res.ok) {
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      const res = await fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ markAll: true }),
+      });
+      if (res.ok) {
+        setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+        setUnreadCount(0);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   return (
     <header className="sticky top-0 z-40 w-full bg-white border-b border-[#e5e5e5]">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -36,8 +102,6 @@ export default function Navbar() {
               swapsphere
             </span>
           </Link>
-
-          {/* Main nav links */}
           <Show when="signed-in">
             <nav className="hidden md:flex items-center gap-6">
               <Link
@@ -68,6 +132,75 @@ export default function Navbar() {
                 <Plus className="h-3 w-3" />
                 List a Coupon
               </Link>
+
+              {/* Notification dropdown */}
+              <div className="relative flex items-center">
+                <button
+                  onClick={() => setIsOpen(!isOpen)}
+                  className="relative p-1 text-[#737373] hover:text-[#111] transition-colors cursor-pointer rounded-lg hover:bg-[#fafafa]"
+                >
+                  <Bell className="h-4 w-4" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-0.5 right-0.5 flex h-2 w-2 rounded-full bg-[#f97316] ring-1 ring-white animate-pulse" />
+                  )}
+                </button>
+
+                {isOpen && (
+                  <div className="absolute right-0 top-8 z-50 w-72 rounded-xl border border-[#e5e5e5] bg-white p-4 shadow-xl space-y-3">
+                    <div className="flex items-center justify-between border-b border-[#e5e5e5] pb-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#111]">
+                        Notifications
+                      </span>
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={markAllAsRead}
+                          className="text-[9px] font-bold uppercase tracking-wider text-amber-500 hover:text-amber-600 transition-colors cursor-pointer"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-56 overflow-y-auto space-y-2.5 pr-1 select-none">
+                      {notifications.length === 0 ? (
+                        <p className="text-[11px] text-[#a3a3a3] text-center py-4">
+                          No notifications yet
+                        </p>
+                      ) : (
+                        notifications.map((n) => (
+                          <div
+                            key={n.id}
+                            onClick={() => {
+                              if (!n.isRead) markAsRead(n.id);
+                            }}
+                            className={`p-2 rounded-lg border text-left transition-colors cursor-pointer ${
+                              n.isRead
+                                ? "bg-white border-[#f5f5f5]"
+                                : "bg-[#fafafa] border-[#e5e5e5] hover:border-[#d4d4d4]"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-1.5">
+                              <span
+                                className={`text-[11px] font-semibold ${
+                                  n.isRead ? "text-[#525252]" : "text-[#111]"
+                                }`}
+                              >
+                                {n.title}
+                              </span>
+                              {!n.isRead && (
+                                <span className="h-1.5 w-1.5 rounded-full bg-[#f97316] shrink-0 mt-1" />
+                              )}
+                            </div>
+                            <p className="text-[10px] text-[#737373] mt-1 leading-relaxed">
+                              {n.message}
+                            </p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="flex items-center border-l border-[#e5e5e5] pl-3">
                 <UserButton />
               </div>

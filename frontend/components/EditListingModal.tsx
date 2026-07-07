@@ -13,6 +13,11 @@ interface Item {
   price?: number | null;
   couponCode?: string;
   couponExpiry?: string;
+  listing_type?: string;
+  selling_price?: number | null;
+  brand?: string | null;
+  voucher_value?: number | null;
+  category_id?: string | null;
 }
 
 interface EditListingModalProps {
@@ -53,6 +58,11 @@ export default function EditListingModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [listingType, setListingType] = useState<"SWAP_ONLY" | "SELL_ONLY" | "SWAP_AND_SELL">("SWAP_ONLY");
+  const [sellingPrice, setSellingPrice] = useState("");
+  const [brand, setBrand] = useState("");
+  const [voucherValue, setVoucherValue] = useState("");
+
   // Initialize values when modal opens or item changes
   useEffect(() => {
     if (isOpen && item) {
@@ -64,6 +74,11 @@ export default function EditListingModal({
       setPrice(item.price !== undefined && item.price !== null ? String(item.price) : "");
       setCouponCode(item.couponCode || "");
       
+      setListingType((item.listing_type as any) || "SWAP_ONLY");
+      setSellingPrice(item.selling_price !== undefined && item.selling_price !== null ? String(item.selling_price) : "");
+      setBrand(item.brand || "");
+      setVoucherValue(item.voucher_value !== undefined && item.voucher_value !== null ? String(item.voucher_value) : "");
+
       if (item.couponExpiry) {
         setCouponExpiry(item.couponExpiry.split("T")[0]);
       } else {
@@ -99,10 +114,14 @@ export default function EditListingModal({
           description: description.trim(),
           category,
           condition,
-          preferredTrade: preferredTrade.trim() || null,
-          price: price.trim() ? parseInt(price.trim(), 10) : null,
+          preferredTrade: listingType !== "SELL_ONLY" ? (preferredTrade.trim() || null) : null,
+          price: listingType !== "SWAP_ONLY" && sellingPrice.trim() ? parseInt(sellingPrice.trim(), 10) : null,
           couponCode: couponCode.trim() ? couponCode.trim().toUpperCase() : undefined,
           couponExpiry: couponExpiry ? couponExpiry : undefined,
+          listingType,
+          sellingPrice: listingType !== "SWAP_ONLY" && sellingPrice.trim() ? parseInt(sellingPrice.trim(), 10) : null,
+          brand: brand.trim() || null,
+          voucherValue: voucherValue.trim() ? parseInt(voucherValue.trim(), 10) : null,
         }),
       });
 
@@ -195,31 +214,77 @@ export default function EditListingModal({
             </div>
           </div>
 
-          {/* Preferred Trade */}
+          {/* Listing Type */}
           <div>
-            <FieldLabel>Preferred Trade Description</FieldLabel>
-            <input
-              type="text"
-              value={preferredTrade}
-              onChange={(e) => setPreferredTrade(e.target.value)}
-              placeholder="e.g. Amazon, Starbucks gift cards"
-              className={inputCls}
-            />
+            <FieldLabel>Listing Type</FieldLabel>
+            <select
+              value={listingType}
+              onChange={(e) => setListingType(e.target.value as any)}
+              className={`${inputCls} cursor-pointer`}
+            >
+              <option value="SWAP_ONLY">Swap Only</option>
+              <option value="SELL_ONLY">Sell Only</option>
+              <option value="SWAP_AND_SELL">Swap &amp; Sell</option>
+            </select>
           </div>
 
-          {/* Price & Code */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-[#e5e5e5] pt-4">
+          {/* Brand & Voucher Value */}
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <FieldLabel>Direct Buy Price (INR) (Optional)</FieldLabel>
+              <FieldLabel>Brand / Platform</FieldLabel>
               <input
-                type="number"
-                min="1"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                placeholder="e.g. 99, 149"
+                type="text"
+                value={brand}
+                onChange={(e) => setBrand(e.target.value)}
+                placeholder="e.g. Swiggy, Amazon"
                 className={inputCls}
               />
             </div>
+            <div>
+              <FieldLabel>Voucher Value (INR)</FieldLabel>
+              <input
+                type="number"
+                min="1"
+                value={voucherValue}
+                onChange={(e) => setVoucherValue(e.target.value)}
+                placeholder="e.g. 500"
+                className={inputCls}
+              />
+            </div>
+          </div>
+
+          {/* Preferred Trade */}
+          {listingType !== "SELL_ONLY" && (
+            <div>
+              <FieldLabel>Preferred Trade Description</FieldLabel>
+              <input
+                type="text"
+                value={preferredTrade}
+                onChange={(e) => setPreferredTrade(e.target.value)}
+                placeholder="e.g. Amazon, Starbucks gift cards"
+                className={inputCls}
+              />
+            </div>
+          )}
+
+          {/* Price & Code */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-[#e5e5e5] pt-4">
+            {listingType !== "SWAP_ONLY" ? (
+              <div>
+                <FieldLabel>Selling Price (INR) *</FieldLabel>
+                <input
+                  type="number"
+                  min="1"
+                  required
+                  value={sellingPrice}
+                  onChange={(e) => setSellingPrice(e.target.value)}
+                  placeholder="e.g. 99, 149"
+                  className={inputCls}
+                />
+              </div>
+            ) : (
+              <div />
+            )}
             <div>
               <FieldLabel>Coupon Code</FieldLabel>
               <input
