@@ -20,7 +20,7 @@ model Profile {
   messages       Message[]
   escrowDeposits EscrowDeposit[]
 
-  referralCode   String?         @unique @map("referral_code")
+  referralCode   String?         @map("referral_code")
   referredBy     String?         @map("referred_by")
   freeBoosts     Int             @default(0) @map("free_boosts")
   creditBalance  Float           @default(0.0) @map("credit_balance")
