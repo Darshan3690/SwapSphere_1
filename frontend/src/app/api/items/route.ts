@@ -12,7 +12,9 @@ export async function GET(request: Request) {
     const minValueFilter = url.searchParams.get("minValue");
     const maxValueFilter = url.searchParams.get("maxValue");
 
-    const whereClause: any = {};
+    const whereClause: any = {
+      isDeleted: { not: true }
+    };
 
     if (userIdFilter) {
       whereClause.userId = userIdFilter;

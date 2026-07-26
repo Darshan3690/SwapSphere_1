@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, RefreshCw, Bell } from "lucide-react";
+import { Plus, RefreshCw, Bell, ShieldCheck } from "lucide-react";
 import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
+import { useAuth } from "@/lib/auth";
 
 interface Notification {
   id: string;
@@ -13,7 +14,11 @@ interface Notification {
   createdAt: string;
 }
 
+const ADMIN_EMAIL = "darshan.rajput369@gmail.com";
+
 export default function Navbar() {
+  const { user } = useAuth();
+  const isAdmin = user?.email === ADMIN_EMAIL;
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -72,51 +77,50 @@ export default function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-white border-b border-[#e5e5e5]">
+    <header className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-md border-b border-slate-200/80">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2 group">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4 text-[#111] group-hover:rotate-180 transition-transform duration-500"
-            >
-              <path
-                d="M7 17V4M7 4L3 8M7 4L11 8"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M17 7V20M17 20L13 16M17 20L21 16"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <span className="text-sm font-semibold tracking-tight text-[#111]">
-              swapsphere
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-tr from-indigo-600 to-blue-600 text-white shadow-sm shadow-indigo-200 group-hover:scale-105 transition-transform">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 stroke-current stroke-[2.2] group-hover:rotate-180 transition-transform duration-500"
+              >
+                <path d="M7 17V4M7 4L3 8M7 4L11 8" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M17 7V20M17 20L13 16M17 20L21 16" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <span className="font-heading text-base font-bold tracking-tight text-slate-900">
+              SwapSphere
             </span>
           </Link>
           <Show when="signed-in">
-            <nav className="hidden md:flex items-center gap-6">
+            <nav className="hidden md:flex items-center gap-5">
               <Link
                 href="/dashboard"
-                className="text-xs font-medium text-[#737373] hover:text-[#111] transition-colors"
+                className="text-xs font-medium text-slate-600 hover:text-indigo-600 transition-colors"
               >
                 Marketplace
               </Link>
               <Link
                 href="/swaps"
-                className="flex items-center gap-1.5 text-xs font-medium text-[#737373] hover:text-[#111] transition-colors"
+                className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 transition-colors"
               >
                 <RefreshCw className="h-3 w-3" />
                 My Swaps
               </Link>
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 transition-colors bg-indigo-50 px-2.5 py-1 rounded-lg"
+                >
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Admin
+                </Link>
+              )}
             </nav>
           </Show>
         </div>
@@ -127,9 +131,9 @@ export default function Navbar() {
             <>
               <Link
                 href="/items/new"
-                className="flex items-center gap-1.5 rounded-lg bg-[#0a0a0a] px-3.5 py-1.5 text-xs font-medium text-white hover:bg-[#262626] transition-colors"
+                className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 hover:shadow-md hover:shadow-indigo-200/50 transition-all active:scale-[0.98]"
               >
-                <Plus className="h-3 w-3" />
+                <Plus className="h-3.5 w-3.5" />
                 List a Coupon
               </Link>
 
@@ -137,32 +141,32 @@ export default function Navbar() {
               <div className="relative flex items-center">
                 <button
                   onClick={() => setIsOpen(!isOpen)}
-                  className="relative p-1 text-[#737373] hover:text-[#111] transition-colors cursor-pointer rounded-lg hover:bg-[#fafafa]"
+                  className="relative p-2 text-slate-500 hover:text-slate-900 transition-colors cursor-pointer rounded-lg hover:bg-slate-100"
                 >
                   <Bell className="h-4 w-4" />
                   {unreadCount > 0 && (
-                    <span className="absolute top-0.5 right-0.5 flex h-2 w-2 rounded-full bg-[#f97316] ring-1 ring-white animate-pulse" />
+                    <span className="absolute top-1 right-1 flex h-2 w-2 rounded-full bg-indigo-600 ring-2 ring-white animate-pulse" />
                   )}
                 </button>
 
                 {isOpen && (
-                  <div className="absolute right-0 top-8 z-50 w-72 rounded-xl border border-[#e5e5e5] bg-white p-4 shadow-xl space-y-3">
-                    <div className="flex items-center justify-between border-b border-[#e5e5e5] pb-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#111]">
+                  <div className="absolute right-0 top-10 z-50 w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-xl shadow-slate-200/60 space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                      <span className="font-heading text-xs font-bold uppercase tracking-wider text-slate-900">
                         Notifications
                       </span>
                       {unreadCount > 0 && (
                         <button
                           onClick={markAllAsRead}
-                          className="text-[9px] font-bold uppercase tracking-wider text-amber-500 hover:text-amber-600 transition-colors cursor-pointer"
+                          className="text-[10px] font-semibold text-indigo-600 hover:text-indigo-700 transition-colors cursor-pointer"
                         >
                           Mark all read
                         </button>
                       )}
                     </div>
-                    <div className="max-h-56 overflow-y-auto space-y-2.5 pr-1 select-none">
+                    <div className="max-h-64 overflow-y-auto space-y-2 pr-1 select-none">
                       {notifications.length === 0 ? (
-                        <p className="text-[11px] text-[#a3a3a3] text-center py-4">
+                        <p className="text-xs text-slate-400 text-center py-6">
                           No notifications yet
                         </p>
                       ) : (
@@ -172,25 +176,25 @@ export default function Navbar() {
                             onClick={() => {
                               if (!n.isRead) markAsRead(n.id);
                             }}
-                            className={`p-2 rounded-lg border text-left transition-colors cursor-pointer ${
+                            className={`p-2.5 rounded-lg border text-left transition-colors cursor-pointer ${
                               n.isRead
-                                ? "bg-white border-[#f5f5f5]"
-                                : "bg-[#fafafa] border-[#e5e5e5] hover:border-[#d4d4d4]"
+                                ? "bg-white border-slate-100"
+                                : "bg-indigo-50/50 border-indigo-100 hover:border-indigo-200"
                             }`}
                           >
                             <div className="flex items-start justify-between gap-1.5">
                               <span
-                                className={`text-[11px] font-semibold ${
-                                  n.isRead ? "text-[#525252]" : "text-[#111]"
+                                className={`text-xs font-semibold ${
+                                  n.isRead ? "text-slate-600" : "text-slate-900"
                                 }`}
                               >
                                 {n.title}
                               </span>
                               {!n.isRead && (
-                                <span className="h-1.5 w-1.5 rounded-full bg-[#f97316] shrink-0 mt-1" />
+                                <span className="h-1.5 w-1.5 rounded-full bg-indigo-600 shrink-0 mt-1" />
                               )}
                             </div>
-                            <p className="text-[10px] text-[#737373] mt-1 leading-relaxed">
+                            <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
                               {n.message}
                             </p>
                           </div>
@@ -201,20 +205,20 @@ export default function Navbar() {
                 )}
               </div>
 
-              <div className="flex items-center border-l border-[#e5e5e5] pl-3">
+              <div className="flex items-center border-l border-slate-200 pl-3">
                 <UserButton />
               </div>
             </>
           </Show>
           <Show when="signed-out">
-            <div className="flex items-center gap-4">
-              <SignInButton mode="modal">
-                <button className="text-xs font-medium text-[#737373] hover:text-[#111] transition-colors cursor-pointer">
+            <div className="flex items-center gap-3">
+              <SignInButton mode="modal" forceRedirectUrl="/dashboard">
+                <button className="text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors cursor-pointer px-3 py-1.5">
                   Sign in
                 </button>
               </SignInButton>
-              <SignUpButton mode="modal">
-                <button className="rounded-lg bg-[#0a0a0a] px-4 py-1.5 text-xs font-medium text-white hover:bg-[#262626] transition-colors cursor-pointer">
+              <SignUpButton mode="modal" forceRedirectUrl="/dashboard">
+                <button className="rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 hover:shadow-md hover:shadow-indigo-200/50 transition-all active:scale-[0.98] cursor-pointer">
                   Get started
                 </button>
               </SignUpButton>

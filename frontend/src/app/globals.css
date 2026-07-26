@@ -1,25 +1,51 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap");
 @import "tailwindcss";
 
-:root {
-  --bg: #fafafa;
-  --surface: #ffffff;
-  --border: #e5e5e5;
-  --border-hover: #d4d4d4;
-  --ink: #111111;
-  --ink-muted: #737373;
-  --ink-faint: #a3a3a3;
-  --primary: #0a0a0a;
-  --primary-hover: #262626;
-  --amber: #f59e0b;
-  --amber-bg: #fef3c7;
-  --amber-text: #92400e;
-  --green-bg: #f0fdf4;
-  --green-text: #166534;
-  --blue-bg: #eff6ff;
-  --blue-text: #1d4ed8;
-  --red-bg: #fef2f2;
-  --red-text: #991b1b;
+@layer base {
+  :root {
+    --font-heading: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+    /* Base Palette */
+    --bg-canvas: #f8fafc;
+    --bg-surface: #ffffff;
+    --bg-subtle: #f1f5f9;
+    --bg-muted: #e2e8f0;
+
+    /* Borders */
+    --border-subtle: #f1f5f9;
+    --border-default: #e2e8f0;
+    --border-strong: #cbd5e1;
+
+    /* Typography */
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --text-subtle: #94a3b8;
+
+    /* Primary Accent - Indigo & Royal Blue */
+    --primary: #4f46e5;
+    --primary-hover: #4338ca;
+    --primary-light: #eff6ff;
+    --primary-border: #c7d2fe;
+
+    /* Functional Colors */
+    --amber-bg: #fffbeb;
+    --amber-border: #fde68a;
+    --amber-text: #b45309;
+
+    --green-bg: #f0fdf4;
+    --green-border: #bbf7d0;
+    --green-text: #15803d;
+
+    --red-bg: #fef2f2;
+    --red-border: #fecaca;
+    --red-text: #b91c1c;
+
+    --blue-bg: #eff6ff;
+    --blue-border: #bfdbfe;
+    --blue-text: #1d4ed8;
+  }
 }
 
 *, *::before, *::after {
@@ -30,55 +56,91 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
+  font-family: var(--font-sans);
 }
 
 body {
-  background: var(--bg);
-  color: var(--ink);
-  font-family: "Inter", system-ui, -apple-system, sans-serif;
-  font-size: 15px;
-  line-height: 1.6;
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
   margin: 0;
-  letter-spacing: -0.005em;
+  letter-spacing: -0.011em;
 }
 
-/* ── Scrollbar ─────────────────────────────── */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
-::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: var(--font-heading);
+  letter-spacing: -0.02em;
+}
 
-/* ── Selection ─────────────────────────────── */
-::selection { background: var(--primary); color: #fff; }
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
 
-/* ── Focus ─────────────────────────────────── */
+/* Selection */
+::selection {
+  background-color: #c7d2fe;
+  color: #1e1b4b;
+}
+
+/* Focus outline */
 :focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
-/* ── Transitions ───────────────────────────── */
-a, button { transition-property: color, background-color, border-color, opacity; transition-duration: 150ms; }
+/* Subtle transitions */
+a, button {
+  transition-property: color, background-color, border-color, box-shadow, transform;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
 
-/* ── Utilities ─────────────────────────────── */
-.scrollbar-none { scrollbar-width: none; }
-.scrollbar-none::-webkit-scrollbar { display: none; }
+/* Custom utility classes */
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
 
-/* ── Ticker overlay fade ────────────────────── */
+/* Glassmorphism SaaS card effect */
+.saas-card {
+  background-color: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+  border-radius: 0.75rem;
+}
+
+.saas-card-hover {
+  transition: all 0.2s ease-in-out;
+}
+.saas-card-hover:hover {
+  border-color: rgba(199, 210, 254, 0.9);
+  box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.06), 0 8px 10px -6px rgba(79, 70, 229, 0.04);
+  transform: translateY(-2px);
+}
+
+.bg-mesh-pattern {
+  background-image: radial-gradient(rgba(99, 102, 241, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
 .ticker-fade {
-  -webkit-mask-image: linear-gradient(
-    to right,
-    transparent 0%,
-    black 10%,
-    black 90%,
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    to right,
-    transparent 0%,
-    black 10%,
-    black 90%,
-    transparent 100%
-  );
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
 }

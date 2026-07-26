@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import Navbar from "@/components/Navbar";
-import { Upload, AlertCircle, RefreshCw, ArrowLeft, Info } from "lucide-react";
+import { Upload, AlertCircle, RefreshCw, ArrowLeft, Info, ShieldCheck, Ticket } from "lucide-react";
 import Link from "next/link";
 
 const CATEGORIES = ["Electronics", "Books", "Fashion", "Home", "Games", "Sports", "Other"];
@@ -12,14 +12,14 @@ const CONDITIONS = ["New", "Like New", "Good", "Fair", "Poor"];
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <label className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-[#a3a3a3] mb-1.5">
+    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 font-heading">
       {children}
     </label>
   );
 }
 
 const inputCls =
-  "w-full rounded-lg bg-white border border-[#e5e5e5] px-4 py-2.5 text-sm text-[#111] placeholder-[#a3a3a3] focus:outline-none focus:border-[#0a0a0a] focus:ring-1 focus:ring-[#0a0a0a] transition-colors";
+  "w-full rounded-xl bg-white border border-slate-200 px-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 transition-all shadow-2xs";
 
 export default function NewItem() {
   const router = useRouter();
@@ -150,9 +150,9 @@ export default function NewItem() {
 
   if (authLoading) {
     return (
-      <div className="flex min-h-screen bg-[#fafafa] flex-col items-center justify-center text-[#737373] gap-2">
-        <RefreshCw className="h-4 w-4 animate-spin text-[#111]" />
-        <span className="text-xs">Authenticating...</span>
+      <div className="flex min-h-screen bg-slate-50 flex-col items-center justify-center text-slate-500 gap-2">
+        <RefreshCw className="h-5 w-5 animate-spin text-indigo-600" />
+        <span className="text-xs font-medium">Authenticating...</span>
       </div>
     );
   }
@@ -164,28 +164,28 @@ export default function NewItem() {
   const minExpiryStr = minExpiry.toISOString().split("T")[0];
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#fafafa] text-[#111]">
+    <div className="flex flex-col min-h-screen bg-slate-50 text-slate-900">
       <Navbar />
 
-      <main className="flex-1 mx-auto max-w-2xl px-4 sm:px-6 w-full">
+      <main className="flex-1 mx-auto max-w-2xl px-4 sm:px-6 w-full py-8">
         {/* ── Page header */}
-        <div className="pt-10 pb-6 border-b border-[#e5e5e5]">
+        <div className="pb-6 border-b border-slate-200/80">
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-1.5 text-xs text-[#737373] hover:text-[#111] transition-colors mb-4"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-colors mb-4"
           >
-            <ArrowLeft className="h-3 w-3" />
+            <ArrowLeft className="h-3.5 w-3.5" />
             Back to Marketplace
           </Link>
-          <h1 className="text-2xl font-bold tracking-tight text-[#111]">List a Coupon</h1>
-          <p className="mt-1 text-sm text-[#737373]">
-            Fill in the details to add your coupon to the marketplace.
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-slate-900">List a Coupon</h1>
+          <p className="mt-1 text-xs text-slate-500">
+            Fill in the details to add your voucher or promo code to the marketplace.
           </p>
         </div>
 
         {/* ── Error banner */}
         {error && (
-          <div className="mt-6 flex items-start gap-2.5 rounded-lg border border-[#fecaca] bg-[#fef2f2] p-4 text-xs text-[#991b1b]">
+          <div className="mt-6 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-700">
             <AlertCircle className="h-4 w-4 flex-shrink-0 mt-px" />
             <span>{error}</span>
           </div>
@@ -194,46 +194,46 @@ export default function NewItem() {
         {/* ── Form */}
         <form onSubmit={handleSubmit} className="py-8 space-y-6">
 
-          {/* Coupon details card */}
-          <div className="rounded-lg border border-[#e5e5e5] bg-white p-6 space-y-5">
+          {/* Secret Code details card */}
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-6 space-y-5 shadow-xs">
             {/* Info banner */}
-            <div className="flex items-start gap-2.5 rounded-md bg-[#fafafa] border border-[#e5e5e5] p-3 text-[11px] text-[#737373]">
-              <Info className="h-3.5 w-3.5 mt-px flex-shrink-0 text-[#a3a3a3]" />
+            <div className="flex items-start gap-3 rounded-xl bg-indigo-50/70 border border-indigo-100 p-3.5 text-xs text-indigo-900 leading-relaxed">
+              <ShieldCheck className="h-4 w-4 mt-0.5 flex-shrink-0 text-indigo-600" />
               <span>
-                Your coupon code is stored securely and only shared with the other party once both sides have confirmed the swap.
+                Your secret coupon code is stored securely in SwapSphere's double escrow protocol and will only be revealed after a trade is agreed upon.
               </span>
             </div>
 
             {/* Listing Type */}
             <div>
-              <FieldLabel>Listing Type <span className="text-[#991b1b] normal-case tracking-normal">*</span></FieldLabel>
+              <FieldLabel>Listing Type <span className="text-red-500 normal-case tracking-normal">*</span></FieldLabel>
               <select
                 value={listingType}
                 onChange={e => setListingType(e.target.value as any)}
-                className={`${inputCls} cursor-pointer`}
+                className={`${inputCls} cursor-pointer font-medium`}
               >
-                <option value="SWAP_ONLY">Swap Only (Trade for another coupon)</option>
+                <option value="SWAP_ONLY">Swap Only (Barter for another coupon)</option>
                 <option value="SELL_ONLY">Sell Only (Purchase via Razorpay)</option>
-                <option value="SWAP_AND_SELL">Swap &amp; Sell (Both options available)</option>
+                <option value="SWAP_AND_SELL">Swap &amp; Sell (Both options enabled)</option>
               </select>
             </div>
 
             {/* Coupon Code */}
             <div>
-              <FieldLabel>Coupon Code <span className="text-[#991b1b] normal-case tracking-normal">*</span></FieldLabel>
+              <FieldLabel>Coupon Code <span className="text-red-500 normal-case tracking-normal">*</span></FieldLabel>
               <input
                 type="text"
                 required
                 value={couponCode}
                 onChange={e => setCouponCode(e.target.value.toUpperCase())}
                 placeholder="e.g. SAVE50, FLAT200OFF"
-                className={`${inputCls} font-mono uppercase`}
+                className={`${inputCls} font-mono uppercase font-bold text-slate-900`}
               />
             </div>
 
             {/* Expiry */}
             <div>
-              <FieldLabel>Expiry Date <span className="text-[#991b1b] normal-case tracking-normal">*</span></FieldLabel>
+              <FieldLabel>Expiry Date <span className="text-red-500 normal-case tracking-normal">*</span></FieldLabel>
               <input
                 type="date"
                 required
@@ -242,15 +242,15 @@ export default function NewItem() {
                 onChange={e => setCouponExpiry(e.target.value)}
                 className={inputCls}
               />
-              <p className="mt-1.5 text-[11px] text-[#a3a3a3]">
-                Only future-dated coupons can be listed.
+              <p className="mt-1.5 text-[11px] text-slate-400">
+                Only active, future-dated coupons can be listed on the marketplace.
               </p>
             </div>
 
             {/* Selling Price (Conditional) */}
             {listingType !== "SWAP_ONLY" && (
               <div>
-                <FieldLabel>Selling Price (INR) <span className="text-[#991b1b] normal-case tracking-normal">*</span></FieldLabel>
+                <FieldLabel>Selling Price (INR) <span className="text-red-500 normal-case tracking-normal">*</span></FieldLabel>
                 <input
                   type="number"
                   min="1"
@@ -260,18 +260,18 @@ export default function NewItem() {
                   placeholder="e.g. 99, 149"
                   className={inputCls}
                 />
-                <p className="mt-1.5 text-[11px] text-[#a3a3a3]">
-                  The price other swappers will pay to buy this coupon instantly.
+                <p className="mt-1.5 text-[11px] text-slate-400">
+                  The price other swappers will pay to buy this coupon directly.
                 </p>
               </div>
             )}
           </div>
 
           {/* Listing details card */}
-          <div className="rounded-lg border border-[#e5e5e5] bg-white p-6 space-y-5">
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-6 space-y-5 shadow-xs">
             {/* Title */}
             <div>
-              <FieldLabel>Deal Name <span className="text-[#991b1b] normal-case tracking-normal">*</span></FieldLabel>
+              <FieldLabel>Deal / Voucher Name <span className="text-red-500 normal-case tracking-normal">*</span></FieldLabel>
               <input
                 type="text"
                 required
@@ -334,13 +334,13 @@ export default function NewItem() {
 
             {/* Description */}
             <div>
-              <FieldLabel>Description <span className="text-[#991b1b] normal-case tracking-normal">*</span></FieldLabel>
+              <FieldLabel>Description <span className="text-red-500 normal-case tracking-normal">*</span></FieldLabel>
               <textarea
                 required
                 rows={4}
                 value={description}
                 onChange={e => setDescription(e.target.value)}
-                placeholder="Describe the coupon — what brand/platform, what discount, any restrictions or T&C."
+                placeholder="Describe the coupon details — what brand, discount percentage/amount, restrictions or minimum spend requirement."
                 className={`${inputCls} resize-none`}
               />
             </div>
@@ -348,12 +348,12 @@ export default function NewItem() {
             {/* Preferred Trade */}
             {listingType !== "SELL_ONLY" && (
               <div>
-                <FieldLabel>Wanted in exchange <span className="text-[#a3a3a3] normal-case tracking-normal font-normal">(optional)</span></FieldLabel>
+                <FieldLabel>Wanted in exchange <span className="text-slate-400 normal-case tracking-normal font-normal">(optional)</span></FieldLabel>
                 <input
                   type="text"
                   value={preferredTrade}
                   onChange={e => setPreferredTrade(e.target.value)}
-                  placeholder="e.g. Swiggy coupon, Zomato discount, any food delivery coupon"
+                  placeholder="e.g. Swiggy coupon, Zomato discount, Steam key"
                   className={inputCls}
                 />
               </div>
@@ -361,25 +361,25 @@ export default function NewItem() {
           </div>
 
           {/* Image upload card */}
-          <div className="rounded-lg border border-[#e5e5e5] bg-white p-6">
-            <FieldLabel>Coupon Screenshot / Brand Logo <span className="text-[#a3a3a3] normal-case tracking-normal font-normal">(optional)</span></FieldLabel>
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-xs">
+            <FieldLabel>Coupon Banner / Brand Screenshot <span className="text-slate-400 normal-case tracking-normal font-normal">(optional)</span></FieldLabel>
 
             {imagePreview ? (
-              <div className="relative mt-2 aspect-video rounded-lg overflow-hidden border border-[#e5e5e5] bg-[#fafafa] max-w-sm">
+              <div className="relative mt-3 aspect-video rounded-xl overflow-hidden border border-slate-200 bg-slate-50 max-w-sm">
                 <img src={imagePreview} alt="Preview" className="h-full w-full object-cover" />
                 <button
                   type="button"
                   onClick={() => { setImageFile(null); setImagePreview(null); }}
-                  className="absolute top-2 right-2 rounded-md bg-white/90 px-2.5 py-1 text-[10px] font-semibold text-[#991b1b] border border-[#fecaca] hover:bg-[#fef2f2] transition-colors cursor-pointer"
+                  className="absolute top-2.5 right-2.5 rounded-lg bg-white/90 px-3 py-1 text-xs font-semibold text-red-700 border border-red-200 hover:bg-red-50 transition-colors cursor-pointer shadow-2xs"
                 >
                   Remove
                 </button>
               </div>
             ) : (
-              <label className="mt-2 flex flex-col items-center justify-center border-2 border-dashed border-[#e5e5e5] bg-[#fafafa] rounded-lg p-10 hover:bg-white hover:border-[#d4d4d4] cursor-pointer transition-colors">
-                <Upload className="h-7 w-7 text-[#d4d4d4] mb-2.5 stroke-[1.5]" />
-                <span className="text-xs font-semibold text-[#737373]">Click to upload photo</span>
-                <span className="text-[11px] text-[#a3a3a3] mt-1">PNG, JPG, JPEG — max 5 MB</span>
+              <label className="mt-3 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 bg-slate-50/70 rounded-xl p-8 hover:bg-slate-100/50 hover:border-indigo-300 cursor-pointer transition-all">
+                <Upload className="h-8 w-8 text-indigo-500 mb-2 stroke-[1.5]" />
+                <span className="text-xs font-semibold text-slate-700">Click to upload voucher image</span>
+                <span className="text-[11px] text-slate-400 mt-1">PNG, JPG, JPEG — maximum 5 MB</span>
                 <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
               </label>
             )}
@@ -389,10 +389,10 @@ export default function NewItem() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-[#0a0a0a] py-3 text-sm font-semibold text-white hover:bg-[#262626] transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full rounded-xl bg-indigo-600 py-3.5 text-sm font-semibold text-white hover:bg-indigo-700 transition-all shadow-md shadow-indigo-200 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
           >
-            {loading && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
-            {loading ? "Publishing..." : "Publish Listing"}
+            {loading && <RefreshCw className="h-4 w-4 animate-spin" />}
+            {loading ? "Publishing Listing..." : "Publish Listing"}
           </button>
         </form>
       </main>
