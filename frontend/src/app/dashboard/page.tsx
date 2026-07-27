@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import Navbar from "@/components/Navbar";
 import ItemCard, { Item } from "@/components/ItemCard";
-import { RefreshCw, Search, Tag, AlertCircle, LayoutGrid, User as UserIcon } from "lucide-react";
+import { RefreshCw, Search, Tag, AlertCircle, LayoutGrid, User as UserIcon, SlidersHorizontal } from "lucide-react";
 
 const CATEGORIES = ["All","Electronics","Books","Fashion","Home","Games","Sports","Other"];
 
@@ -94,9 +94,9 @@ export default function Dashboard() {
 
   if (authLoading || (!user && authLoading)) {
     return (
-      <div className="flex min-h-screen bg-[#fafafa] flex-col items-center justify-center text-[#737373] gap-2">
-        <RefreshCw className="h-4 w-4 animate-spin text-[#111]" />
-        <span className="text-xs">Authenticating...</span>
+      <div className="flex min-h-screen bg-slate-50 flex-col items-center justify-center text-slate-500 gap-2">
+        <RefreshCw className="h-5 w-5 animate-spin text-indigo-600" />
+        <span className="text-xs font-medium">Authenticating...</span>
       </div>
     );
   }
@@ -107,47 +107,45 @@ export default function Dashboard() {
   const currentLoading = activeTab === "marketplace" ? loading : myItemsLoading;
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#fafafa] text-[#111]">
+    <div className="flex flex-col min-h-screen bg-slate-50 text-slate-900">
       <Navbar />
 
       <main className="flex-1 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 w-full">
 
         {/* ── Page header ──────────────────────────────── */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-10 pb-6 border-b border-[#e5e5e5]">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-8 pb-6 border-b border-slate-200/80">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#111]">
-              {activeTab === "marketplace" ? "Browse Coupons" : "My Listings"}
+            <h1 className="font-heading text-2xl font-bold tracking-tight text-slate-900">
+              {activeTab === "marketplace" ? "Browse Marketplace" : "My Listings"}
             </h1>
-            <p className="mt-1 text-sm text-[#737373]">
+            <p className="mt-1 text-xs text-slate-500">
               {activeTab === "marketplace"
-                ? "Find coupons available for exchange and propose a swap."
-                : "All your active listings, including pending and swapped ones."}
+                ? "Find coupons available for barter exchange or purchase."
+                : "Manage your active listings, including pending trades and swapped vouchers."}
             </p>
           </div>
 
           {activeTab === "marketplace" && (
-            <div className="flex items-center gap-2 w-full md:max-w-md">
+            <div className="flex items-center gap-2.5 w-full md:max-w-md">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#a3a3a3]" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Search coupons or brands..."
-                  className="w-full rounded-lg bg-white border border-[#e5e5e5] pl-9 pr-4 py-2 text-xs text-[#111] placeholder-[#a3a3a3] focus:outline-none focus:border-[#0a0a0a] focus:ring-1 focus:ring-[#0a0a0a] transition-colors"
+                  placeholder="Search coupons, brands, or deals..."
+                  className="w-full rounded-xl bg-white border border-slate-200 pl-10 pr-4 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 transition-all shadow-2xs"
                 />
               </div>
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl border transition-all cursor-pointer shadow-2xs ${
                   showFilters
-                    ? "bg-[#0a0a0a] border-[#0a0a0a] text-white"
-                    : "bg-white border-[#e5e5e5] text-[#737373] hover:text-[#111] hover:border-[#d4d4d4]"
+                    ? "bg-indigo-600 border-indigo-600 text-white"
+                    : "bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300"
                 }`}
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
-                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-                </svg>
+                <SlidersHorizontal className="h-3.5 w-3.5" />
                 <span>Filters</span>
               </button>
             </div>
@@ -155,7 +153,7 @@ export default function Dashboard() {
         </div>
 
         {/* ── Tabs ─────────────────────────────────────── */}
-        <div className="flex gap-6 border-b border-[#e5e5e5] mt-0">
+        <div className="flex gap-6 border-b border-slate-200/80 mt-0">
           {([
             { id: "marketplace", label: "Marketplace", icon: <LayoutGrid className="h-3.5 w-3.5" /> },
             { id: "my-listings", label: "My Listings",  icon: <UserIcon className="h-3.5 w-3.5" />, count: myItems.length },
@@ -163,16 +161,16 @@ export default function Dashboard() {
             <button
               key={tab.id}
               onClick={() => { setActiveTab(tab.id); if (tab.id === "my-listings") fetchMyItems(); }}
-              className={`flex items-center gap-1.5 pb-3 pt-4 text-xs font-semibold border-b-2 transition-all ${
+              className={`flex items-center gap-2 pb-3 pt-4 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
                 activeTab === tab.id
-                  ? "border-[#111] text-[#111]"
-                  : "border-transparent text-[#737373] hover:text-[#111]"
+                  ? "border-indigo-600 text-indigo-600 font-bold"
+                  : "border-transparent text-slate-500 hover:text-slate-900"
               }`}
             >
               {tab.icon}
               {tab.label}
               {"count" in tab && tab.count > 0 && (
-                <span className="ml-0.5 rounded-full bg-[#0a0a0a] px-1.5 py-px text-[9px] font-bold text-white leading-none">
+                <span className="ml-0.5 rounded-full bg-indigo-50 border border-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-600 leading-none">
                   {tab.count}
                 </span>
               )}
@@ -182,15 +180,15 @@ export default function Dashboard() {
 
         {/* ── Category filters ─────────────────────────── */}
         {activeTab === "marketplace" && (
-          <div className="flex overflow-x-auto pb-4 gap-2 scrollbar-none py-4 border-b border-[#e5e5e5]">
+          <div className="flex overflow-x-auto pb-3 gap-2 scrollbar-none py-4 border-b border-slate-200/80">
             {CATEGORIES.map(cat => (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
                 className={`rounded-lg px-3.5 py-1.5 text-xs font-medium border whitespace-nowrap transition-all cursor-pointer ${
                   selectedCategory === cat
-                    ? "bg-[#0a0a0a] border-[#0a0a0a] text-white"
-                    : "bg-white border-[#e5e5e5] text-[#737373] hover:border-[#d4d4d4] hover:text-[#111]"
+                    ? "bg-indigo-600 border-indigo-600 text-white shadow-xs font-semibold"
+                    : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900"
                 }`}
               >
                 {cat}
@@ -201,10 +199,10 @@ export default function Dashboard() {
 
         {/* ── Additional filters panel ───────────────────── */}
         {activeTab === "marketplace" && showFilters && (
-          <div className="mt-4 p-4 rounded-xl border border-[#e5e5e5] bg-white grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="mt-4 p-4 rounded-xl border border-slate-200 bg-white grid grid-cols-1 sm:grid-cols-2 gap-4 shadow-sm">
             {/* Listing Type Select */}
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-[#a3a3a3] mb-2">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
                 Listing Type
               </label>
               <div className="flex flex-wrap gap-1.5">
@@ -219,8 +217,8 @@ export default function Dashboard() {
                     onClick={() => setSelectedListingType(type.id)}
                     className={`rounded-lg px-3 py-1.5 text-xs font-medium border transition-all cursor-pointer ${
                       selectedListingType === type.id
-                        ? "bg-[#0a0a0a] border-[#0a0a0a] text-white"
-                        : "bg-white border-[#e5e5e5] text-[#737373] hover:border-[#d4d4d4] hover:text-[#111]"
+                        ? "bg-indigo-600 border-indigo-600 text-white font-semibold"
+                        : "bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900"
                     }`}
                   >
                     {type.label}
@@ -231,28 +229,28 @@ export default function Dashboard() {
 
             {/* Price range */}
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-[#a3a3a3] mb-2">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
                 Price Range (INR)
               </label>
               <div className="flex items-center gap-2">
                 <input
                   type="number"
-                  placeholder="Min"
+                  placeholder="Min ₹"
                   value={minPrice}
                   onChange={e => setMinPrice(e.target.value)}
-                  className="w-full rounded-lg bg-white border border-[#e5e5e5] px-3 py-1.5 text-xs text-[#111] focus:outline-none focus:border-[#0a0a0a]"
+                  className="w-full rounded-lg bg-white border border-slate-200 px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-600"
                 />
-                <span className="text-[#a3a3a3] text-xs">to</span>
+                <span className="text-slate-400 text-xs">to</span>
                 <input
                   type="number"
-                  placeholder="Max"
+                  placeholder="Max ₹"
                   value={maxPrice}
                   onChange={e => setMaxPrice(e.target.value)}
-                  className="w-full rounded-lg bg-white border border-[#e5e5e5] px-3 py-1.5 text-xs text-[#111] focus:outline-none focus:border-[#0a0a0a]"
+                  className="w-full rounded-lg bg-white border border-slate-200 px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-600"
                 />
                 <button
                   onClick={() => { setMinPrice(""); setMaxPrice(""); }}
-                  className="text-xs text-[#737373] hover:text-[#991b1b] font-medium px-2 py-1.5 transition-colors cursor-pointer"
+                  className="text-xs text-slate-500 hover:text-red-600 font-medium px-2 py-1.5 transition-colors cursor-pointer"
                 >
                   Clear
                 </button>
@@ -263,7 +261,7 @@ export default function Dashboard() {
 
         {/* ── Error ────────────────────────────────────── */}
         {error && (
-          <div className="mt-6 flex items-start gap-2.5 rounded-lg border border-[#fecaca] bg-[#fef2f2] p-4 text-xs text-[#991b1b]">
+          <div className="mt-6 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-700">
             <AlertCircle className="h-4 w-4 flex-shrink-0 mt-px" />
             <span>{error}</span>
           </div>
@@ -272,24 +270,26 @@ export default function Dashboard() {
         {/* ── Grid ─────────────────────────────────────── */}
         <div className="py-8">
           {currentLoading ? (
-            <div className="flex flex-col items-center justify-center py-24 gap-2 text-[#737373]">
-              <RefreshCw className="h-5 w-5 animate-spin text-[#111]" />
-              <span className="text-xs">Fetching listings...</span>
+            <div className="flex flex-col items-center justify-center py-24 gap-2 text-slate-500">
+              <RefreshCw className="h-5 w-5 animate-spin text-indigo-600" />
+              <span className="text-xs font-medium">Fetching listings...</span>
             </div>
           ) : currentList.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-center rounded-lg border border-dashed border-[#e5e5e5] bg-white">
-              <Tag className="h-8 w-8 text-[#d4d4d4] stroke-[1.2] mb-3" />
-              <p className="text-sm font-semibold text-[#111]">
-                {activeTab === "my-listings" ? "No listings yet" : "No items found"}
+            <div className="flex flex-col items-center justify-center py-24 text-center rounded-2xl border border-dashed border-slate-200 bg-white p-8">
+              <div className="h-12 w-12 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 mb-3">
+                <Tag className="h-6 w-6 stroke-[1.5]" />
+              </div>
+              <p className="font-heading text-base font-bold text-slate-900">
+                {activeTab === "my-listings" ? "No listings yet" : "No coupons found"}
               </p>
-              <p className="mt-1 text-xs text-[#737373] max-w-xs">
+              <p className="mt-1 text-xs text-slate-500 max-w-xs leading-relaxed">
                 {activeTab === "my-listings"
-                  ? 'Click "List a Coupon" in the navbar to create your first listing.'
-                  : "Try adjusting your search or selecting a different category."}
+                  ? 'Click "List a Coupon" in the navigation bar to create your first listing.'
+                  : "Try adjusting your search query, price filter, or selecting a different category."}
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {currentList.map(item => (
                 <ItemCard key={item.id} item={item} />
               ))}

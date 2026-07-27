@@ -58,17 +58,17 @@ export default function ReviewModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0a0a0a]/40 backdrop-blur-xs">
-      <div className="relative w-full max-w-sm rounded-xl border border-[#e5e5e5] bg-white p-6 shadow-xl space-y-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/30 backdrop-blur-sm">
+      <div className="relative w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-[#111] uppercase tracking-wider">Leave a Review</h3>
+          <h3 className="font-heading text-xs font-bold text-slate-900 uppercase tracking-wider">Leave a Review</h3>
           {!success && (
             <button
               onClick={onClose}
-              className="rounded p-1 text-[#737373] hover:bg-[#fafafa] hover:text-[#111] transition-colors cursor-pointer"
+              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors cursor-pointer"
             >
-              <X className="h-4 w-4" />
+              <X className="h-4.5 w-4.5" />
             </button>
           )}
         </div>
@@ -80,20 +80,20 @@ export default function ReviewModal({
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
-            <p className="text-sm font-semibold text-[#111]">Thank you!</p>
-            <p className="text-xs text-[#737373]">Your feedback has been submitted successfully.</p>
+            <p className="font-heading text-sm font-bold text-slate-900">Thank you!</p>
+            <p className="text-xs text-slate-500">Your feedback has been submitted successfully.</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="flex items-start gap-2.5 rounded-lg border border-[#fecaca] bg-[#fef2f2] p-3 text-xs text-[#991b1b]">
+              <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
                 <AlertCircle className="h-4 w-4 flex-shrink-0 mt-px" />
                 <span>{error}</span>
               </div>
             )}
 
-            <p className="text-xs text-[#737373] leading-relaxed">
-              How was your trading experience with <span className="font-semibold text-[#111]">@{revieweeUsername}</span>?
+            <p className="text-xs text-slate-600 leading-relaxed">
+              How was your trading experience with <span className="font-bold text-slate-900">@{revieweeUsername}</span>?
             </p>
 
             {/* Stars */}
@@ -111,7 +111,7 @@ export default function ReviewModal({
                     className={`h-7 w-7 ${
                       star <= (hoverRating ?? rating)
                         ? "fill-amber-400 text-amber-400"
-                        : "text-[#e5e5e5] hover:text-[#d4d4d4]"
+                        : "text-slate-200 hover:text-slate-300"
                     }`}
                   />
                 </button>
@@ -120,15 +120,15 @@ export default function ReviewModal({
 
             {/* Comment */}
             <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-[#a3a3a3] mb-1.5">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 font-heading">
                 Comments (Optional)
               </label>
               <textarea
                 rows={3}
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                placeholder="e.g. Friendly swapper, fast response, coupon worked perfectly!"
-                className="w-full rounded-lg bg-white border border-[#e5e5e5] px-3 py-2 text-xs text-[#111] placeholder-[#a3a3a3] focus:outline-none focus:border-[#0a0a0a] resize-none"
+                placeholder="e.g. Fast response, code worked perfectly!"
+                className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 resize-none shadow-2xs"
               />
             </div>
 
@@ -136,7 +136,7 @@ export default function ReviewModal({
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-[#0a0a0a] py-2.5 text-xs font-semibold text-white hover:bg-[#262626] transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+              className="w-full rounded-xl bg-indigo-600 py-3 text-xs font-semibold text-white hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-200 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
             >
               {loading && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
               <span>{loading ? "Submitting..." : "Submit Review"}</span>

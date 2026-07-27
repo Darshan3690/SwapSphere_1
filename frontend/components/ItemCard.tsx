@@ -38,48 +38,39 @@ export default function ItemCard({ item }: ItemCardProps) {
   const daysLeft = getDaysUntilExpiry();
   const isExpiringSoon = daysLeft !== null && daysLeft <= 7;
 
-  const statusColors: Record<string, { bg: string; text: string }> = {
-    Available:  { bg: "#f0fdf4", text: "#166534" },
-    Pending:    { bg: "#fef3c7", text: "#92400e" },
-    Swapped:    { bg: "#eff6ff", text: "#1d4ed8" },
-    Cancelled:  { bg: "#fef2f2", text: "#991b1b" },
+  const statusColors: Record<string, { bg: string; text: string; border: string }> = {
+    Available:  { bg: "#f0fdf4", text: "#15803d", border: "#bbf7d0" },
+    Pending:    { bg: "#fffbeb", text: "#b45309", border: "#fde68a" },
+    Swapped:    { bg: "#eff6ff", text: "#1d4ed8", border: "#bfdbfe" },
+    Cancelled:  { bg: "#fef2f2", text: "#b91c1c", border: "#fecaca" },
   };
 
-  const statusStyle = statusColors[item.status] ?? { bg: "#f5f5f5", text: "#525252" };
+  const statusStyle = statusColors[item.status] ?? { bg: "#f8fafc", text: "#475569", border: "#e2e8f0" };
 
   return (
-    <div
-      className="group relative flex flex-col overflow-hidden rounded-lg border border-[#e5e5e5] bg-white transition-all duration-200 hover:border-[#d4d4d4]"
-      style={{ boxShadow: "none" }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 16px rgba(0,0,0,0.05)";
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
-      }}
-    >
-      {/* Image */}
-      <div className="relative aspect-square w-full overflow-hidden bg-[#fafafa] border-b border-[#e5e5e5]">
+    <div className="group relative flex flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white transition-all duration-200 hover:border-indigo-300 hover:shadow-xl hover:shadow-indigo-500/5">
+      {/* Image / Thumbnail header */}
+      <div className="relative aspect-video w-full overflow-hidden bg-slate-100/70 border-b border-slate-100">
         {item.image_url ? (
           <img
             src={item.image_url}
             alt={item.title}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-[#d4d4d4]">
+          <div className="flex h-full w-full items-center justify-center text-slate-300 bg-gradient-to-br from-slate-50 to-slate-100">
             {item.is_coupon ? (
-              <Ticket className="h-9 w-9 stroke-[1]" />
+              <Ticket className="h-10 w-10 stroke-[1.2] text-indigo-400/80" />
             ) : (
-              <Tag className="h-9 w-9 stroke-[1]" />
+              <Tag className="h-10 w-10 stroke-[1.2] text-indigo-400/80" />
             )}
           </div>
         )}
 
         {/* Coupon badge */}
         {item.is_coupon && (
-          <span className="absolute top-2.5 left-2.5 z-10 flex items-center gap-1 rounded-full bg-[#0a0a0a] px-2 py-0.5 text-[10px] font-medium text-white">
-            <Ticket className="h-2.5 w-2.5" />
+          <span className="absolute top-3 left-3 z-10 flex items-center gap-1.5 rounded-md bg-indigo-600 px-2.5 py-1 text-[10px] font-bold text-white shadow-xs">
+            <Ticket className="h-3 w-3" />
             Coupon
           </span>
         )}
@@ -87,8 +78,8 @@ export default function ItemCard({ item }: ItemCardProps) {
         {/* Status badge (non-Available) */}
         {item.status !== "Available" && (
           <span
-            className="absolute top-2.5 right-2.5 z-10 rounded-full px-2 py-0.5 text-[10px] font-medium"
-            style={{ background: statusStyle.bg, color: statusStyle.text }}
+            className="absolute top-3 right-3 z-10 rounded-md border px-2.5 py-0.5 text-[10px] font-semibold"
+            style={{ background: statusStyle.bg, color: statusStyle.text, borderColor: statusStyle.border }}
           >
             {item.status}
           </span>
@@ -98,12 +89,17 @@ export default function ItemCard({ item }: ItemCardProps) {
       {/* Content */}
       <div className="flex flex-1 flex-col p-4">
         {/* Category */}
-        <span className="text-[10px] font-medium uppercase tracking-widest text-[#a3a3a3]">
-          {item.category}
-        </span>
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
+            {item.category}
+          </span>
+          <span className="text-[10px] font-medium text-slate-400">
+            {item.condition}
+          </span>
+        </div>
 
         {/* Title */}
-        <h3 className="mt-1 text-sm font-semibold text-[#111] leading-snug line-clamp-1">
+        <h3 className="font-heading text-sm font-bold text-slate-900 leading-snug line-clamp-1 group-hover:text-indigo-600 transition-colors">
           <Link href={`/items/${item.id}`}>
             <span className="absolute inset-0" />
             {item.title}
@@ -111,20 +107,20 @@ export default function ItemCard({ item }: ItemCardProps) {
         </h3>
 
         {/* Description */}
-        <p className="mt-1 text-xs text-[#737373] line-clamp-2 leading-relaxed">
+        <p className="mt-1 text-xs text-slate-500 line-clamp-2 leading-relaxed">
           {item.description}
         </p>
 
         {/* Expiry badge */}
         {item.is_coupon && daysLeft !== null && (
           <div
-            className="mt-2.5 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-medium w-fit"
-            style={{
-              background: isExpiringSoon ? "#fef3c7" : "#f5f5f5",
-              color: isExpiringSoon ? "#92400e" : "#737373",
-            }}
+            className={`mt-3 inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[10px] font-semibold w-fit border ${
+              isExpiringSoon
+                ? "bg-amber-50 text-amber-700 border-amber-200"
+                : "bg-slate-50 text-slate-600 border-slate-200"
+            }`}
           >
-            <Clock className="h-2.5 w-2.5 flex-shrink-0" />
+            <Clock className="h-3 w-3 flex-shrink-0" />
             {daysLeft < 0
               ? "Expired"
               : daysLeft === 0
@@ -134,26 +130,21 @@ export default function ItemCard({ item }: ItemCardProps) {
         )}
 
         {/* Footer */}
-        <div className="mt-auto pt-3 border-t border-[#f5f5f5] flex items-center justify-between mt-3">
-          {/* Condition chip */}
-          <span className="rounded-full border border-[#e5e5e5] px-2 py-0.5 text-[10px] font-medium text-[#737373]">
-            {item.condition}
-          </span>
-
-          {/* Owner */}
+        <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between mt-3">
+          {/* Owner chip */}
           <div className="flex items-center gap-1.5">
             {item.profiles?.avatar_url ? (
               <img
                 src={item.profiles.avatar_url}
                 alt={item.profiles.username}
-                className="h-4 w-4 rounded-full object-cover"
+                className="h-5 w-5 rounded-full object-cover ring-1 ring-slate-200"
               />
             ) : (
-              <div className="h-4 w-4 rounded-full bg-[#f5f5f5] border border-[#e5e5e5] flex items-center justify-center text-[7px] font-semibold text-[#737373]">
+              <div className="h-5 w-5 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-[9px] font-bold text-indigo-600">
                 {(item.profiles?.username ?? "U")[0].toUpperCase()}
               </div>
             )}
-            <span className="text-[10px] text-[#a3a3a3]">
+            <span className="text-xs text-slate-500 font-medium">
               @{item.profiles?.username ?? "user"}
             </span>
           </div>
@@ -161,9 +152,9 @@ export default function ItemCard({ item }: ItemCardProps) {
 
         {/* Swap preference */}
         {item.preferred_trade && (
-          <div className="mt-2 flex items-center gap-1 text-[10px] text-[#737373]">
-            <ArrowUpDown className="h-2.5 w-2.5 flex-shrink-0" />
-            <span className="line-clamp-1">{item.preferred_trade}</span>
+          <div className="mt-2.5 flex items-center gap-1.5 text-[11px] text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100">
+            <ArrowUpDown className="h-3 w-3 text-indigo-500 flex-shrink-0" />
+            <span className="line-clamp-1 font-medium text-slate-600">Looking for: {item.preferred_trade}</span>
           </div>
         )}
       </div>

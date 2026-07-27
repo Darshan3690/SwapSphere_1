@@ -32,14 +32,14 @@ const CONDITIONS = ["New", "Like New", "Good", "Fair", "Poor"];
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <label className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-[#a3a3a3] mb-1.5">
+    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 font-heading">
       {children}
     </label>
   );
 }
 
 const inputCls =
-  "w-full rounded-lg bg-white border border-[#e5e5e5] px-4 py-2 text-sm text-[#111] placeholder-[#a3a3a3] focus:outline-none focus:border-[#0a0a0a] focus:ring-1 focus:ring-[#0a0a0a] transition-colors";
+  "w-full rounded-xl bg-white border border-slate-200 px-4 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 transition-all shadow-2xs";
 
 export default function EditListingModal({
   isOpen,
@@ -140,23 +140,23 @@ export default function EditListingModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0a0a0a]/40 backdrop-blur-xs">
-      <div className="relative w-full max-w-lg rounded-lg border border-[#e5e5e5] bg-white shadow-xl max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/30 backdrop-blur-sm">
+      <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#e5e5e5] px-5 py-4">
-          <h2 className="text-sm font-bold text-[#111] uppercase tracking-wider">Edit Listing</h2>
+        <div className="flex items-center justify-between border-b border-slate-200/80 px-6 py-4">
+          <h2 className="font-heading text-sm font-bold text-slate-900 uppercase tracking-wider">Edit Coupon Listing</h2>
           <button
             onClick={onClose}
-            className="rounded p-1 text-[#737373] hover:bg-[#fafafa] hover:text-[#111] transition-colors cursor-pointer"
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors cursor-pointer"
           >
-            <X className="h-4 w-4" />
+            <X className="h-4.5 w-4.5" />
           </button>
         </div>
 
         {/* Scrollable Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
           {error && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-[#fecaca] bg-[#fef2f2] p-3 text-xs text-[#991b1b]">
+            <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs text-red-700">
               <AlertCircle className="h-4 w-4 flex-shrink-0 mt-px" />
               <span>{error}</span>
             </div>
@@ -268,7 +268,7 @@ export default function EditListingModal({
           )}
 
           {/* Price & Code */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-[#e5e5e5] pt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-slate-100 pt-4">
             {listingType !== "SWAP_ONLY" ? (
               <div>
                 <FieldLabel>Selling Price (INR) *</FieldLabel>
@@ -291,7 +291,7 @@ export default function EditListingModal({
                 type="text"
                 value={couponCode}
                 onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                className={`${inputCls} font-mono`}
+                className={`${inputCls} font-mono uppercase font-bold`}
               />
             </div>
           </div>
@@ -309,18 +309,18 @@ export default function EditListingModal({
         </form>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 border-t border-[#e5e5e5] px-5 py-4 bg-[#fafafa] rounded-b-lg">
+        <div className="flex justify-end gap-3 border-t border-slate-200/80 px-6 py-4 bg-slate-50">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-[#e5e5e5] bg-white px-4 py-2 text-xs font-semibold text-[#111] hover:bg-[#fafafa] transition-colors cursor-pointer"
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer shadow-2xs"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="flex items-center gap-1.5 rounded-lg bg-[#0a0a0a] px-4 py-2 text-xs font-semibold text-white hover:bg-[#262626] transition-colors disabled:opacity-50 cursor-pointer"
+            className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-200 disabled:opacity-50 cursor-pointer"
           >
             {loading && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
             <span>{loading ? "Saving Changes..." : "Save Changes"}</span>

@@ -20,11 +20,16 @@ model Profile {
   messages       Message[]
   escrowDeposits EscrowDeposit[]
 
-  referralCode   String?         @map("referral_code")
+  referralCode   String?         @map("referral_code") // Removed unique to avoid duplicate null indexes in Mongo
   referredBy     String?         @map("referred_by")
   freeBoosts     Int             @default(0) @map("free_boosts")
   creditBalance  Float           @default(0.0) @map("credit_balance")
   role           String          @default("USER")
+
+  isBanned       Boolean         @default(false) @map("is_banned")
+  isSuspended    Boolean         @default(false) @map("is_suspended")
+  trustScore     Int             @default(100) @map("trust_score")
+  isVerified     Boolean         @default(false) @map("is_verified")
 
   reviewsGiven    Review[]       @relation("Reviewer")
   reviewsReceived Review[]       @relation("Reviewee")
@@ -52,6 +57,12 @@ model Item {
   isCoupon       Boolean   @default(false) @map("is_coupon")
   price          Int?      @map("price")
   status         String    @default("Available") // Available, Pending, Swapped
+
+  isFeatured          Boolean   @default(false) @map("is_featured")
+  isSuspicious        Boolean   @default(false) @map("is_suspicious")
+  isDeleted           Boolean   @default(false) @map("is_deleted")
+  verificationStatus  String    @default("Approved") @map("verification_status") // Approved, Pending, Rejected
+
   
   createdAt      DateTime  @default(now()) @map("created_at")
 
@@ -99,6 +110,8 @@ model Message {
   sender         Profile     @relation(fields: [senderId], references: [id])
   content       String
   createdAt     DateTime    @default(now()) @map("created_at")
+
+  isReported    Boolean     @default(false) @map("is_reported")
 
   @@map("messages")
 }
@@ -166,4 +179,44 @@ model Referral {
   createdAt   DateTime @default(now()) @map("created_at")
 
   @@map("referrals")
+}
+
+model AuditLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  action    String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("audit_logs")
+}
+
+model Announcement {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+  isActive  Boolean  @default(true) @map("is_active")
+
+  @@map("announcements")
+}
+
+model Feedback {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  username  String
+  email     String
+  subject   String
+  message   String
+  status    String   @default("Open") // Open, Resolved, Archived
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("feedbacks")
+}
+
+model Brand {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String   @unique
+  logoUrl   String?  @map("logo_url")
+  isHidden  Boolean  @default(false) @map("is_hidden")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("brands")
 }

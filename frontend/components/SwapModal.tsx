@@ -121,29 +121,29 @@ export default function SwapModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-zinc-900/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal box */}
-      <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xl transition-all">
+      <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl transition-all">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 rounded-lg p-1 text-zinc-400 hover:bg-zinc-50 hover:text-zinc-700 transition-colors"
+          className="absolute top-4 right-4 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
         >
           <X className="h-5 w-5" />
         </button>
 
         <div className="flex items-center gap-2 mb-4">
-          <RefreshCw className="h-5 w-5 text-zinc-900 animate-spin-slow" />
-          <h2 className="text-lg font-bold text-zinc-900">Propose a Swap</h2>
+          <RefreshCw className="h-5 w-5 text-indigo-600" />
+          <h2 className="font-heading text-lg font-bold text-slate-900">Propose a Swap</h2>
         </div>
 
-        <p className="text-xs text-zinc-500 mb-6">
-          You are requesting to swap your item for <strong className="text-zinc-800">"{receiverItemTitle}"</strong>. Select which of your items you would like to offer.
+        <p className="text-xs text-slate-500 mb-6">
+          You are requesting to trade for <strong className="text-slate-900">&quot;{receiverItemTitle}&quot;</strong>. Choose which of your active listings to offer in exchange.
         </p>
 
         {error && (
-          <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-650">
+          <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
             <AlertCircle className="h-4.5 w-4.5 flex-shrink-0" />
             <span>{error}</span>
           </div>
@@ -151,16 +151,16 @@ export default function SwapModal({
 
         {fetchingItems ? (
           <div className="flex flex-col items-center justify-center py-10 gap-2">
-            <RefreshCw className="h-6 w-6 text-zinc-400 animate-spin" />
-            <span className="text-xs text-zinc-500">Loading your listings...</span>
+            <RefreshCw className="h-6 w-6 text-indigo-600 animate-spin" />
+            <span className="text-xs text-slate-500 font-medium">Loading your available listings...</span>
           </div>
         ) : myItems.length === 0 ? (
-          <div className="flex flex-col items-center text-center py-6 border border-dashed border-zinc-200 rounded-xl mb-6 bg-zinc-50">
-            <p className="text-sm text-zinc-500 mb-3">You don't have any items available to trade.</p>
+          <div className="flex flex-col items-center text-center py-6 border border-dashed border-slate-200 rounded-xl mb-6 bg-slate-50">
+            <p className="text-xs text-slate-500 mb-3">You don&apos;t have any active coupons available to trade.</p>
             <Link
               href="/items/new"
               onClick={onClose}
-              className="flex items-center gap-1 text-xs font-semibold bg-white hover:bg-zinc-50 border border-zinc-200 text-zinc-800 px-3 py-1.5 rounded-lg shadow-xs transition-colors"
+              className="flex items-center gap-1.5 text-xs font-semibold bg-indigo-600 text-white px-3.5 py-2 rounded-xl shadow-xs transition-all hover:bg-indigo-700"
             >
               <Plus className="h-3.5 w-3.5" />
               List an Item First
@@ -168,7 +168,7 @@ export default function SwapModal({
           </div>
         ) : (
           <div className="space-y-4 mb-6">
-            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block font-heading">
               Choose an item to offer:
             </label>
             <div className="max-h-60 overflow-y-auto pr-1 space-y-2.5">
@@ -178,27 +178,27 @@ export default function SwapModal({
                   onClick={() => setSelectedItemId(item.id)}
                   className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
                     selectedItemId === item.id
-                      ? "border-zinc-900 bg-zinc-50 shadow-xs"
-                      : "border-zinc-200 bg-white hover:border-zinc-300"
+                      ? "border-indigo-600 bg-indigo-50/50 shadow-2xs"
+                      : "border-slate-200 bg-white hover:border-slate-300"
                   }`}
                 >
-                  <div className="h-12 w-12 rounded-lg bg-zinc-50 overflow-hidden flex-shrink-0 border border-zinc-200">
+                  <div className="h-12 w-12 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0 border border-slate-200">
                     {item.image_url ? (
                       <img src={item.image_url} alt={item.title} className="h-full w-full object-cover" />
                     ) : (
-                      <div className="h-full w-full flex items-center justify-center text-[10px] text-zinc-400">
-                        No Img
+                      <div className="h-full w-full flex items-center justify-center text-[10px] text-slate-400">
+                        No Image
                       </div>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-zinc-800 truncate">{item.title}</p>
+                    <p className="text-xs font-bold text-slate-900 truncate">{item.title}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[9px] uppercase tracking-wider text-zinc-600 font-bold">
+                      <span className="text-[9px] uppercase tracking-wider text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded">
                         {item.category}
                       </span>
-                      <span className="h-1 w-1 rounded-full bg-zinc-250" />
-                      <span className="text-[9px] text-zinc-500 font-medium">
+                      <span className="h-1 w-1 rounded-full bg-slate-300" />
+                      <span className="text-[10px] text-slate-500 font-medium">
                         {item.condition}
                       </span>
                     </div>
@@ -212,14 +212,14 @@ export default function SwapModal({
         <div className="flex items-center gap-3">
           <button
             onClick={onClose}
-            className="flex-1 rounded-xl border border-zinc-200 py-3 text-xs font-semibold text-zinc-500 hover:bg-zinc-50 hover:text-zinc-800 transition-colors shadow-xs cursor-pointer"
+            className="flex-1 rounded-xl border border-slate-200 py-3 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
           >
             Cancel
           </button>
           <button
             onClick={handleProposeSwap}
             disabled={loading || myItems.length === 0}
-            className="flex-1 rounded-xl bg-zinc-900 py-3 text-xs font-semibold text-white shadow-sm hover:bg-zinc-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            className="flex-1 rounded-xl bg-indigo-600 py-3 text-xs font-semibold text-white shadow-sm shadow-indigo-200 hover:bg-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {loading ? "Sending..." : "Submit Proposal"}
           </button>
