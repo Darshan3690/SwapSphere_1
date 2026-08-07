@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, RefreshCw, Bell, ShieldCheck } from "lucide-react";
+import { Plus, RefreshCw, Bell, ShieldCheck, Menu, X as CloseIcon, LayoutDashboard, ShoppingBag } from "lucide-react";
 import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import { useAuth } from "@/lib/auth";
 
@@ -14,14 +14,19 @@ interface Notification {
   createdAt: string;
 }
 
-const ADMIN_EMAIL = "darshan.rajput369@gmail.com";
+const ADMIN_EMAILS = [
+  (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),
+  "darshan.rajput369@gmail.com",
+  "jaiminkansagara388@gmail.com"
+].filter(Boolean);
 
 export default function Navbar() {
   const { user } = useAuth();
-  const isAdmin = user?.email === ADMIN_EMAIL;
+  const isAdmin = !!user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase());
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const fetchNotifications = async () => {
     try {
@@ -38,7 +43,7 @@ export default function Navbar() {
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 7000);
+    const interval = setInterval(fetchNotifications, 45000);
     return () => clearInterval(interval);
   }, []);
 
@@ -78,10 +83,18 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-md border-b border-slate-200/80">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-2.5 sm:px-6 lg:px-8">
         {/* Logo */}
-        <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2.5 group">
+        <div className="flex items-center gap-2 sm:gap-8">
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-1.5 text-slate-600 hover:text-slate-900 md:hidden rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+            aria-label="Toggle Navigation Menu"
+          >
+            {mobileMenuOpen ? <CloseIcon className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+
+          <Link href="/" className="flex items-center gap-2 group shrink-0">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-tr from-indigo-600 to-blue-600 text-white shadow-sm shadow-indigo-200 group-hover:scale-105 transition-transform">
               <svg
                 viewBox="0 0 24 24"
@@ -93,7 +106,7 @@ export default function Navbar() {
                 <path d="M17 7V20M17 20L13 16M17 20L21 16" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
-            <span className="font-heading text-base font-bold tracking-tight text-slate-900">
+            <span className="font-heading text-sm sm:text-base font-bold tracking-tight text-slate-900 hidden min-[360px]:inline">
               SwapSphere
             </span>
           </Link>
@@ -126,15 +139,16 @@ export default function Navbar() {
         </div>
 
         {/* Right side */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Show when="signed-in">
             <>
               <Link
                 href="/items/new"
-                className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 hover:shadow-md hover:shadow-indigo-200/50 transition-all active:scale-[0.98]"
+                className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-2.5 sm:px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 hover:shadow-md hover:shadow-indigo-200/50 transition-all active:scale-[0.98]"
               >
                 <Plus className="h-3.5 w-3.5" />
-                List a Coupon
+                <span className="hidden sm:inline">List a Coupon</span>
+                <span className="sm:hidden">List</span>
               </Link>
 
               {/* Notification dropdown */}
@@ -150,7 +164,7 @@ export default function Navbar() {
                 </button>
 
                 {isOpen && (
-                  <div className="absolute right-0 top-10 z-50 w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-xl shadow-slate-200/60 space-y-3">
+                  <div className="absolute right-0 top-10 z-50 w-72 sm:w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-xl shadow-slate-200/60 space-y-3">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                       <span className="font-heading text-xs font-bold uppercase tracking-wider text-slate-900">
                         Notifications
@@ -205,20 +219,20 @@ export default function Navbar() {
                 )}
               </div>
 
-              <div className="flex items-center border-l border-slate-200 pl-3">
+              <div className="flex items-center border-l border-slate-200 pl-2 sm:pl-3">
                 <UserButton />
               </div>
             </>
           </Show>
           <Show when="signed-out">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <SignInButton mode="modal" forceRedirectUrl="/dashboard">
-                <button className="text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors cursor-pointer px-3 py-1.5">
+                <button className="text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors cursor-pointer px-2 sm:px-3 py-1.5">
                   Sign in
                 </button>
               </SignInButton>
               <SignUpButton mode="modal" forceRedirectUrl="/dashboard">
-                <button className="rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 hover:shadow-md hover:shadow-indigo-200/50 transition-all active:scale-[0.98] cursor-pointer">
+                <button className="rounded-lg bg-indigo-600 px-3 sm:px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 hover:shadow-md hover:shadow-indigo-200/50 transition-all active:scale-[0.98] cursor-pointer">
                   Get started
                 </button>
               </SignUpButton>
@@ -226,6 +240,40 @@ export default function Navbar() {
           </Show>
         </div>
       </div>
+
+      {/* Mobile Navigation Drawer */}
+      {mobileMenuOpen && (
+        <div className="md:hidden border-b border-slate-200 bg-white/95 backdrop-blur-md px-4 py-3 space-y-2 animate-in slide-in-from-top-2 duration-200">
+          <Show when="signed-in">
+            <Link
+              href="/dashboard"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 rounded-xl hover:bg-slate-50"
+            >
+              <ShoppingBag className="h-4 w-4 text-slate-500" />
+              Marketplace
+            </Link>
+            <Link
+              href="/swaps"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 rounded-xl hover:bg-slate-50"
+            >
+              <RefreshCw className="h-4 w-4 text-slate-500" />
+              My Swaps
+            </Link>
+            {isAdmin && (
+              <Link
+                href="/admin"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-indigo-600 bg-indigo-50 rounded-xl"
+              >
+                <ShieldCheck className="h-4 w-4 text-indigo-600" />
+                Admin Business Control Center
+              </Link>
+            )}
+          </Show>
+        </div>
+      )}
     </header>
   );
 }

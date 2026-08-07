@@ -8,7 +8,15 @@ export function useAuth() {
   const { signOut } = useClerkAuth();
 
   const memoizedUser = useMemo(() => {
-    return user ? { id: user.id, email: user.primaryEmailAddress?.emailAddress } : null;
+    return user
+      ? {
+          id: user.id,
+          email: user.primaryEmailAddress?.emailAddress,
+          fullName: user.fullName || user.firstName || (user.primaryEmailAddress?.emailAddress ? user.primaryEmailAddress.emailAddress.split("@")[0] : "Admin"),
+          firstName: user.firstName,
+          username: user.username || user.firstName,
+        }
+      : null;
   }, [user]);
 
   const memoizedProfile = useMemo(() => {

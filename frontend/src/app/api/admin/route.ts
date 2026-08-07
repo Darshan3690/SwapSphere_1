@@ -2,27 +2,35 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth, currentUser } from "@clerk/nextjs/server";
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "darshan.rajput369@gmail.com";
+const ADMIN_EMAILS = [
+  (process.env.ADMIN_EMAIL || "").toLowerCase(),
+  (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").toLowerCase(),
+  "darshan.rajput369@gmail.com",
+  "jaiminkansagara388@gmail.com"
+].filter(Boolean);
 
-// Verify admin access — robust check with debug logging
+// Verify admin access — robust check with email list and database profile role
 async function verifyAdmin(): Promise<boolean> {
   try {
     const user = await currentUser();
+    if (!user) return false;
     
-    if (user) {
-      const allEmails = (user.emailAddresses || []).map(e => e.emailAddress);
-      const primary = user.primaryEmailAddress?.emailAddress;
-      
-      if (primary && primary.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-        return true;
-      }
-      for (const email of allEmails) {
-        if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-          return true;
-        }
-      }
-      return false;
+    const userEmails = (user.emailAddresses || []).map(e => e.emailAddress.toLowerCase());
+    if (user.primaryEmailAddress?.emailAddress) {
+      userEmails.push(user.primaryEmailAddress.emailAddress.toLowerCase());
     }
+    
+    // 1. Check configured admin emails
+    const matchesEmail = userEmails.some(email => ADMIN_EMAILS.includes(email));
+    if (matchesEmail) return true;
+
+    // 2. Check profile role in DB
+    const profile = await prisma.profile.findUnique({
+      where: { id: user.id },
+      select: { role: true }
+    });
+    if (profile && profile.role === "ADMIN") return true;
+
     return false;
   } catch (err) {
     console.error("[Admin Auth Debug] Error in verifyAdmin:", err);
@@ -190,12 +198,12 @@ export async function GET(request: Request) {
     }
 
     if (tab === "chats") {
-      // Fetch reported chat logs
-      const reportedLogs = await prisma.message.findMany({
-        where: { isReported: true },
-        include: { sender: true, swapRequest: true }
+      const messages = await prisma.message.findMany({
+        take: 50,
+        orderBy: { createdAt: "desc" },
+        include: { sender: true }
       });
-      return NextResponse.json({ chats: reportedLogs });
+      return NextResponse.json({ chats: messages });
     }
 
     if (tab === "feedback") {
@@ -222,6 +230,71 @@ export async function GET(request: Request) {
         orderBy: { createdAt: "desc" }
       });
       return NextResponse.json({ announcements });
+    }
+
+    if (tab === "featured") {
+      const featuredItems = await prisma.item.findMany({
+        where: { isFeatured: true },
+        include: { user: true },
+        orderBy: { createdAt: "desc" }
+      });
+      return NextResponse.json({ featured: featuredItems });
+    }
+
+    if (tab === "reports") {
+      const usersCount = await prisma.profile.count();
+      const itemsCount = await prisma.item.count();
+      const tradesCount = await prisma.swapRequest.count({ where: { status: "Completed" } });
+      const pendingTradesCount = await prisma.swapRequest.count({ where: { status: "Pending" } });
+      const reportsCount = await prisma.message.count({ where: { isReported: true } });
+
+      const completedSwaps = await prisma.swapRequest.findMany({
+        where: { status: "Completed" },
+        include: { senderItem: true, receiverItem: true }
+      });
+      const realCalculatedRevenue = completedSwaps.reduce((acc, swap) => {
+        const val1 = swap.senderItem?.price || 0;
+        const val2 = swap.receiverItem?.price || 0;
+        return acc + Math.round((val1 + val2) * 0.05); // 5% platform escrow fee
+      }, 0);
+
+      return NextResponse.json({
+        summary: {
+          totalUsers: usersCount,
+          totalVouchers: itemsCount,
+          completedTrades: tradesCount,
+          pendingTrades: pendingTradesCount,
+          reportedFraud: reportsCount,
+          totalRevenue: realCalculatedRevenue
+        }
+      });
+    }
+
+    if (tab === "notifications") {
+      const notifications = await prisma.notification.findMany({
+        take: 50,
+        orderBy: { createdAt: "desc" }
+      });
+      return NextResponse.json({ notifications });
+    }
+
+    if (tab === "exports") {
+      const users = await prisma.profile.findMany({ select: { id: true, username: true, role: true, trustScore: true, isVerified: true } });
+      const items = await prisma.item.findMany({ select: { id: true, title: true, category: true, price: true, status: true, verificationStatus: true } });
+      const trades = await prisma.swapRequest.findMany({ select: { id: true, senderId: true, receiverId: true, status: true, createdAt: true } });
+      return NextResponse.json({ users, items, trades });
+    }
+
+    if (tab === "settings") {
+      return NextResponse.json({
+        settings: {
+          platformName: "SwapSphere",
+          maintenanceMode: false,
+          maxUploadSize: "5MB",
+          escrowWindowHours: 24,
+          allowRegistration: true
+        }
+      });
     }
 
     if (tab === "audit") {
@@ -368,19 +441,33 @@ export async function POST(request: Request) {
         break;
 
       // --- Trade Management ---
-      case "force_complete_trade":
-        await prisma.swapRequest.update({
+      case "force_complete_trade": {
+        const trade = await prisma.swapRequest.update({
           where: { id: payload.tradeId },
           data: { status: "Completed" }
         });
+        if (trade.senderItemId) {
+          await prisma.item.update({ where: { id: trade.senderItemId }, data: { status: "Traded" } });
+        }
+        if (trade.receiverItemId) {
+          await prisma.item.update({ where: { id: trade.receiverItemId }, data: { status: "Traded" } });
+        }
         break;
+      }
 
-      case "cancel_trade":
-        await prisma.swapRequest.update({
+      case "cancel_trade": {
+        const trade = await prisma.swapRequest.update({
           where: { id: payload.tradeId },
           data: { status: "Cancelled" }
         });
+        if (trade.senderItemId) {
+          await prisma.item.update({ where: { id: trade.senderItemId }, data: { status: "Available" } });
+        }
+        if (trade.receiverItemId) {
+          await prisma.item.update({ where: { id: trade.receiverItemId }, data: { status: "Available" } });
+        }
         break;
+      }
 
       // --- Categories Management ---
       case "add_category":
