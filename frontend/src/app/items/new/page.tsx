@@ -104,15 +104,43 @@ export default function NewItem() {
       let imageUrl: string | null = null;
 
       if (imageFile) {
-        const formData = new FormData();
-        formData.append("file", imageFile);
-        const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
-        if (!uploadRes.ok) {
-          const uploadErr = await uploadRes.json();
-          throw new Error(uploadErr.error || "Failed to upload image.");
+        try {
+          const formData = new FormData();
+          formData.append("file", imageFile);
+          const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+          if (!uploadRes.ok) {
+            const uploadErr = await uploadRes.json().catch(() => ({}));
+            // Try base64 Data URL fallback on client side
+            const dataUrl = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(imageFile);
+            }).catch(() => null);
+
+            if (dataUrl) {
+              imageUrl = dataUrl;
+            } else {
+              throw new Error(uploadErr.error || "Failed to upload image.");
+            }
+          } else {
+            const uploadData = await uploadRes.json();
+            imageUrl = uploadData.imageUrl;
+          }
+        } catch (uploadErr: any) {
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(imageFile);
+          }).catch(() => null);
+
+          if (dataUrl) {
+            imageUrl = dataUrl;
+          } else {
+            throw uploadErr;
+          }
         }
-        const uploadData = await uploadRes.json();
-        imageUrl = uploadData.imageUrl;
       }
 
       const res = await fetch("/api/items", {
