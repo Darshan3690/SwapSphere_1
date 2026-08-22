@@ -20,7 +20,8 @@ interface EscrowDeposit {
   id: string;
   depositor_id: string;
   item_id: string;
-  coupon_code: string;
+  coupon_code: string | null;
+  is_revealed?: boolean;
   coupon_expiry: string | null;
   verification_status: string;
   deposited_at: string;
@@ -423,7 +424,7 @@ export default function EscrowPanel({
                   <code className="text-base font-mono font-extrabold text-slate-900 tracking-widest">
                     {myDeposit!.coupon_code}
                   </code>
-                  <button onClick={() => handleCopy(myDeposit!.coupon_code, "my")} className="text-slate-400 hover:text-slate-700 transition-colors p-1">
+                  <button onClick={() => myDeposit!.coupon_code && handleCopy(myDeposit!.coupon_code, "my")} className="text-slate-400 hover:text-slate-700 transition-colors p-1">
                     {copied === "my" ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
                   </button>
                 </div>
@@ -446,12 +447,18 @@ export default function EscrowPanel({
               ) : (
                 <>
                   <div className="flex items-center justify-between gap-2">
-                    <code className="text-base font-mono font-extrabold text-indigo-950 tracking-widest">
-                      {partnerDeposit!.coupon_code}
-                    </code>
-                    <button onClick={() => handleCopy(partnerDeposit!.coupon_code, "partner")} className="text-indigo-500 hover:text-indigo-700 transition-colors p-1">
-                      {copied === "partner" ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
-                    </button>
+                    {partnerDeposit!.coupon_code ? (
+                      <>
+                        <code className="text-base font-mono font-extrabold text-indigo-950 tracking-widest">
+                          {partnerDeposit!.coupon_code}
+                        </code>
+                        <button onClick={() => partnerDeposit!.coupon_code && handleCopy(partnerDeposit!.coupon_code, "partner")} className="text-indigo-500 hover:text-indigo-700 transition-colors p-1">
+                          {copied === "partner" ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                        </button>
+                      </>
+                    ) : (
+                      <span className="text-xs font-semibold text-indigo-700">Locked until escrow conditions are met</span>
+                    )}
                   </div>
                   {partnerDeposit!.coupon_expiry && (
                     <p className="text-[10px] text-indigo-700 mt-1.5 font-medium">Expires: {new Date(partnerDeposit!.coupon_expiry).toLocaleDateString()}</p>

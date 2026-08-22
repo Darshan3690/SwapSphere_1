@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@clerk/nextjs/server";
 
 const ADMIN_EMAILS = [
   (process.env.ADMIN_EMAIL || "").toLowerCase(),
@@ -362,6 +362,13 @@ export async function POST(request: Request) {
         });
         break;
 
+      case "toggle_admin":
+        await prisma.profile.update({
+          where: { id: payload.userId },
+          data: { role: payload.status ? "ADMIN" : "USER" }
+        });
+        break;
+
       // --- Voucher Moderations ---
       case "verify_voucher":
         await prisma.item.update({
@@ -447,10 +454,10 @@ export async function POST(request: Request) {
           data: { status: "Completed" }
         });
         if (trade.senderItemId) {
-          await prisma.item.update({ where: { id: trade.senderItemId }, data: { status: "Traded" } });
+          await prisma.item.update({ where: { id: trade.senderItemId }, data: { status: "Swapped" } });
         }
         if (trade.receiverItemId) {
-          await prisma.item.update({ where: { id: trade.receiverItemId }, data: { status: "Traded" } });
+          await prisma.item.update({ where: { id: trade.receiverItemId }, data: { status: "Swapped" } });
         }
         break;
       }
@@ -616,4 +623,3 @@ async function autoSeedInitialData() {
     console.error("Auto seeding error (non-fatal):", err);
   }
 }
-

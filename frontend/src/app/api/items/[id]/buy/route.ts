@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
+import {
+  isValidObjectId,
+  jsonError,
+  listingSupportsSale,
+  parseOptionalPositiveInt,
+  readJsonObject,
+  trimmedString,
+} from "@/lib/api";
 
 export async function POST(
   request: Request,
@@ -8,15 +16,24 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
+    if (!isValidObjectId(id)) {
+      return jsonError("Invalid item id", 400);
+    }
+
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { paymentId, amountPaid } = body;
+    const body = await readJsonObject(request);
+    if (!body) {
+      return jsonError("Invalid JSON request body", 400);
+    }
 
-    if (!paymentId) {
+    const { paymentId, amountPaid } = body;
+    const paymentIdValue = trimmedString(paymentId);
+
+    if (!paymentIdValue) {
       return NextResponse.json({ error: "Missing payment confirmation details" }, { status: 400 });
     }
 
@@ -30,8 +47,30 @@ export async function POST(
       return NextResponse.json({ error: "You cannot purchase your own listing" }, { status: 400 });
     }
 
-    if (item.status !== "Available") {
+    if (item.status !== "Available" || item.isDeleted || item.verificationStatus !== "Approved") {
       return NextResponse.json({ error: "This item is no longer available for purchase" }, { status: 400 });
+    }
+
+    if (!listingSupportsSale(item.listingType)) {
+      return jsonError("This listing is only available for swaps", 400);
+    }
+
+    if (!item.couponCode) {
+      return jsonError("This listing is missing coupon details and cannot be purchased", 409);
+    }
+
+    const expectedPrice = item.sellingPrice ?? item.price;
+    if (!expectedPrice || expectedPrice <= 0) {
+      return jsonError("This listing does not have a valid selling price", 409);
+    }
+
+    const clientAmountPaid = parseOptionalPositiveInt(amountPaid, "Amount paid");
+    if (clientAmountPaid.error) {
+      return jsonError(clientAmountPaid.error, 400);
+    }
+
+    if (clientAmountPaid.value && clientAmountPaid.value !== expectedPrice) {
+      return jsonError("Payment amount does not match the listing price", 400);
     }
 
     // Server-side Razorpay verification (if credentials are set in environment variables)
@@ -41,7 +80,7 @@ export async function POST(
     if (rzKeyId && rzKeySecret) {
       try {
         const authHeader = "Basic " + Buffer.from(`${rzKeyId}:${rzKeySecret}`).toString("base64");
-        const rzResponse = await fetch(`https://api.razorpay.com/v1/payments/${paymentId}`, {
+        const rzResponse = await fetch(`https://api.razorpay.com/v1/payments/${paymentIdValue}`, {
           headers: { Authorization: authHeader },
         });
 
@@ -51,8 +90,6 @@ export async function POST(
 
         const payment = await rzResponse.json();
         
-        // Calculate expected price
-        const expectedPrice = item.price !== null && item.price !== undefined ? item.price : 99;
         const expectedAmountPaise = expectedPrice * 100;
         
         if (payment.status !== "captured") {
@@ -67,16 +104,23 @@ export async function POST(
         return NextResponse.json({ error: "Payment verification system error" }, { status: 500 });
       }
     } else {
+      if (process.env.NODE_ENV === "production") {
+        return jsonError("Payment verification is not configured", 503);
+      }
       console.warn("Razorpay API credentials not configured. Skipping payment verification for testing.");
     }
 
     // Update status to Sold/Swapped so it's no longer available in the marketplace
-    const updatedItem = await prisma.item.update({
-      where: { id },
+    const updateResult = await prisma.item.updateMany({
+      where: { id, status: "Available" },
       data: {
         status: "Sold",
       },
     });
+
+    if (updateResult.count === 0) {
+      return jsonError("This item was just purchased or is no longer available", 409);
+    }
 
     // Trigger Notification for the seller
     try {
@@ -87,7 +131,7 @@ export async function POST(
         data: {
           userId: item.userId,
           title: "Voucher Purchased Directly!",
-          message: `@${buyerName} purchased your listing: "${item.title}" for ₹${item.price || 0}.`,
+          message: `@${buyerName} purchased your listing: "${item.title}" for ₹${expectedPrice}.`,
           isRead: false,
         },
       });
@@ -99,7 +143,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       message: "Purchase complete!",
-      couponCode: item.couponCode || "NO_CODE_PROVIDED",
+      couponCode: item.couponCode,
       couponExpiry: item.couponExpiry ? item.couponExpiry.toISOString() : null,
       title: item.title,
     }, { status: 200 });

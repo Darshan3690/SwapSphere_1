@@ -42,6 +42,10 @@ interface Item {
   created_at: string;
   profiles?: Profile;
   price?: number | null;
+  listing_type?: "SWAP_ONLY" | "SELL_ONLY" | "SWAP_AND_SELL";
+  selling_price?: number | null;
+  brand?: string | null;
+  voucher_value?: number | null;
 }
 
 interface PageProps {
@@ -155,6 +159,7 @@ export default function ItemDetail({ params }: PageProps) {
   // Get price (use user's custom price if set, else fall back to dynamic keywords)
   const getPrice = () => {
     if (!item) return 99;
+    if (item.selling_price !== undefined && item.selling_price !== null) return item.selling_price;
     if (item.price !== undefined && item.price !== null) return item.price;
     const text = (item.title + " " + item.description).toLowerCase();
     if (text.includes("500") || text.includes("five hundred")) return 149;
@@ -165,6 +170,11 @@ export default function ItemDetail({ params }: PageProps) {
 
   const handleBuyDirectly = async () => {
     if (!item || !user || buying) return;
+    if (item.listing_type === "SWAP_ONLY") {
+      setError("This listing is only available for swaps.");
+      return;
+    }
+
     setBuying(true);
     setError(null);
 
@@ -280,6 +290,8 @@ export default function ItemDetail({ params }: PageProps) {
 
   const isOwner = item.user_id === user.id;
   const price = getPrice();
+  const canSwap = item.listing_type !== "SELL_ONLY";
+  const canBuy = item.listing_type === "SELL_ONLY" || item.listing_type === "SWAP_AND_SELL";
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50 text-slate-900">
@@ -363,10 +375,10 @@ export default function ItemDetail({ params }: PageProps) {
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80">
                 <h3 className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                   <RefreshCw className="h-3.5 w-3.5 text-indigo-600" />
-                  <span>Looking for in exchange:</span>
+                  <span>{canSwap ? "Looking for in exchange:" : "Direct purchase listing"}</span>
                 </h3>
                 <p className="text-xs text-slate-900 font-bold">
-                  {item.preferred_trade || "Open to any trade proposals!"}
+                  {canSwap ? item.preferred_trade || "Open to any trade proposals!" : `Available to buy for ₹${price}`}
                 </p>
               </div>
             </div>
@@ -407,7 +419,7 @@ export default function ItemDetail({ params }: PageProps) {
                   </div>
                 </FadeUp>
               ) : isOwner ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className={`grid grid-cols-1 gap-3 ${canSwap && canBuy ? "sm:grid-cols-2" : ""}`}>
                   <button
                     onClick={() => setIsEditModalOpen(true)}
                     className="w-full rounded-xl border border-slate-200 bg-white py-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer shadow-2xs"
@@ -426,27 +438,31 @@ export default function ItemDetail({ params }: PageProps) {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {/* Swap Button */}
-                  <button
-                    onClick={() => setIsSwapModalOpen(true)}
-                    disabled={item.status !== "Available"}
-                    className="w-full rounded-xl bg-indigo-600 py-3 text-xs font-semibold text-white hover:bg-indigo-700 transition-colors disabled:opacity-50 cursor-pointer shadow-sm shadow-indigo-200"
-                  >
-                    Propose a Swap
-                  </button>
+                  {canSwap && (
+                    <button
+                      onClick={() => setIsSwapModalOpen(true)}
+                      disabled={item.status !== "Available"}
+                      className="w-full rounded-xl bg-indigo-600 py-3 text-xs font-semibold text-white hover:bg-indigo-700 transition-colors disabled:opacity-50 cursor-pointer shadow-sm shadow-indigo-200"
+                    >
+                      Propose a Swap
+                    </button>
+                  )}
 
                   {/* Razorpay Buy Directly Button */}
-                  <button
-                    onClick={handleBuyDirectly}
-                    disabled={item.status !== "Available" || buying}
-                    className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-slate-900 py-3 text-xs font-semibold text-white hover:bg-slate-800 transition-colors disabled:opacity-50 cursor-pointer shadow-2xs"
-                  >
-                    {buying ? (
-                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <CreditCard className="h-3.5 w-3.5 text-indigo-400" />
-                    )}
-                    <span>{buying ? "Processing..." : `Buy for ₹${price}`}</span>
-                  </button>
+                  {canBuy && (
+                    <button
+                      onClick={handleBuyDirectly}
+                      disabled={item.status !== "Available" || buying}
+                      className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-slate-900 py-3 text-xs font-semibold text-white hover:bg-slate-800 transition-colors disabled:opacity-50 cursor-pointer shadow-2xs"
+                    >
+                      {buying ? (
+                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <CreditCard className="h-3.5 w-3.5 text-indigo-400" />
+                      )}
+                      <span>{buying ? "Processing..." : `Buy for ₹${price}`}</span>
+                    </button>
+                  )}
                 </div>
               )}
             </div>

@@ -1,6 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
+import {
+  ensureProfile,
+  isListingType,
+  isProfileBlocked,
+  jsonError,
+  listingSupportsSale,
+  parseFutureDate,
+  parseOptionalPositiveInt,
+  readJsonObject,
+  trimmedString,
+} from "@/lib/api";
 
 export async function GET(request: Request) {
   try {
@@ -13,13 +24,15 @@ export async function GET(request: Request) {
     const maxValueFilter = url.searchParams.get("maxValue");
 
     const whereClause: any = {
-      isDeleted: { not: true }
+      isDeleted: { not: true },
     };
 
     if (userIdFilter) {
       whereClause.userId = userIdFilter;
     } else {
       whereClause.status = "Available";
+      whereClause.verificationStatus = "Approved";
+      whereClause.isSuspicious = { not: true };
     }
 
     if (categoryFilter && categoryFilter !== "All") {
@@ -33,6 +46,12 @@ export async function GET(request: Request) {
     if (minValueFilter || maxValueFilter) {
       const min = minValueFilter ? parseInt(minValueFilter, 10) : undefined;
       const max = maxValueFilter ? parseInt(maxValueFilter, 10) : undefined;
+      if ((minValueFilter && (isNaN(min!) || min! < 0)) || (maxValueFilter && (isNaN(max!) || max! < 0))) {
+        return jsonError("Price filters must be valid positive numbers", 400);
+      }
+      if (min !== undefined && max !== undefined && min > max) {
+        return jsonError("Minimum price cannot be greater than maximum price", 400);
+      }
       
       whereClause.sellingPrice = {};
       if (min !== undefined && !isNaN(min)) {
@@ -121,7 +140,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const body = await readJsonObject(request);
+    if (!body) {
+      return jsonError("Invalid JSON request body", 400);
+    }
+
     const {
       title,
       description,
@@ -139,71 +162,108 @@ export async function POST(request: Request) {
       categoryId,
     } = body;
 
-    // Server-side validation
-    if (!title?.trim() || !description?.trim() || !category || !condition || !couponCode?.trim() || !couponExpiry) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    const titleValue = trimmedString(title);
+    const descriptionValue = trimmedString(description);
+    const categoryValue = trimmedString(category);
+    const conditionValue = trimmedString(condition);
+    const couponCodeValue = trimmedString(couponCode);
+    const brandValue = trimmedString(brand);
+    const preferredTradeValue = trimmedString(preferredTrade);
+    const requestedListingType = listingType ?? "SWAP_ONLY";
+
+    if (!titleValue || !descriptionValue || !categoryValue || !conditionValue || !couponCodeValue || !couponExpiry) {
+      return jsonError("Missing required fields", 400);
     }
 
-    const expiryDate = new Date(couponExpiry);
-    if (expiryDate <= new Date()) {
-      return NextResponse.json({ error: "Expiry date must be in the future" }, { status: 400 });
+    if (titleValue.length > 80) {
+      return jsonError("Title must be 80 characters or fewer", 400);
     }
 
-    // Ensure the profile exists in MongoDB (resilience layer)
-    const profile = await prisma.profile.findUnique({
-      where: { id: userId },
-    });
+    if (descriptionValue.length > 2000) {
+      return jsonError("Description must be 2000 characters or fewer", 400);
+    }
 
-    if (!profile) {
-      // Fallback: create profile if it was not created by webhook
-      await prisma.profile.create({
-        data: {
-          id: userId,
-          username: `user_${userId.substring(userId.length - 6)}`,
-          fullName: "New Swapper",
-        },
-      });
+    if (!isListingType(requestedListingType)) {
+      return jsonError("Invalid listing type", 400);
+    }
+
+    const parsedExpiry = parseFutureDate(couponExpiry, "Expiry date");
+    if (parsedExpiry.error || !parsedExpiry.value) {
+      return jsonError(parsedExpiry.error || "Invalid expiry date", 400);
+    }
+
+    const parsedPrice = parseOptionalPositiveInt(price, "Price");
+    if (parsedPrice.error) {
+      return jsonError(parsedPrice.error, 400);
+    }
+
+    const parsedSellingPrice = parseOptionalPositiveInt(sellingPrice, "Selling price");
+    if (parsedSellingPrice.error) {
+      return jsonError(parsedSellingPrice.error, 400);
+    }
+
+    const parsedVoucherValue = parseOptionalPositiveInt(voucherValue, "Voucher value");
+    if (parsedVoucherValue.error) {
+      return jsonError(parsedVoucherValue.error, 400);
+    }
+
+    if (listingSupportsSale(requestedListingType) && !parsedSellingPrice.value) {
+      return jsonError("Selling price is required for sellable listings", 400);
+    }
+
+    if (categoryId && typeof categoryId === "string" && !/^[a-f\d]{24}$/i.test(categoryId)) {
+      return jsonError("Invalid category id", 400);
+    }
+
+    const profile = await ensureProfile(userId);
+    if (isProfileBlocked(profile)) {
+      return jsonError("Your account is not allowed to create listings", 403);
     }
 
     // Resilience layer for Category model
-    let finalCategoryId = categoryId;
-    if (!finalCategoryId && category) {
+    let finalCategoryId = typeof categoryId === "string" ? categoryId : null;
+    if (!finalCategoryId && categoryValue) {
       const dbCategory = await prisma.category.findFirst({
-        where: { name: { equals: category, mode: "insensitive" } },
+        where: { name: { equals: categoryValue, mode: "insensitive" } },
       });
       if (dbCategory) {
         finalCategoryId = dbCategory.id;
       } else {
-        const newCat = await prisma.category.create({
-          data: { name: category },
-        });
-        finalCategoryId = newCat.id;
+        try {
+          const newCat = await prisma.category.create({
+            data: { name: categoryValue },
+          });
+          finalCategoryId = newCat.id;
+        } catch {
+          const retryCategory = await prisma.category.findFirst({
+            where: { name: { equals: categoryValue, mode: "insensitive" } },
+          });
+          finalCategoryId = retryCategory?.id || null;
+        }
       }
     }
 
-    const parsedPrice = price ? parseInt(String(price), 10) : null;
-    const parsedSellingPrice = sellingPrice ? parseInt(String(sellingPrice), 10) : null;
-    const parsedVoucherValue = voucherValue ? parseInt(String(voucherValue), 10) : null;
+    const finalSellingPrice = parsedSellingPrice.value ?? parsedPrice.value;
 
     // Create new listing in MongoDB
     const newItem = await prisma.item.create({
       data: {
         userId,
-        title: title.trim(),
-        description: description.trim(),
-        category,
-        condition,
-        imageUrl: imageUrl || null,
-        preferredTrade: preferredTrade?.trim() || null,
+        title: titleValue,
+        description: descriptionValue,
+        category: categoryValue,
+        condition: conditionValue,
+        imageUrl: typeof imageUrl === "string" && imageUrl.trim() ? imageUrl.trim() : null,
+        preferredTrade: requestedListingType !== "SELL_ONLY" ? preferredTradeValue : null,
         status: "Available",
         isCoupon: true,
-        price: parsedPrice,
-        couponCode: couponCode.trim().toUpperCase(),
-        couponExpiry: expiryDate,
-        listingType: listingType || "SWAP_ONLY",
-        sellingPrice: parsedSellingPrice !== null ? parsedSellingPrice : parsedPrice,
-        brand: brand?.trim() || null,
-        voucherValue: parsedVoucherValue,
+        price: finalSellingPrice,
+        couponCode: couponCodeValue.toUpperCase(),
+        couponExpiry: parsedExpiry.value,
+        listingType: requestedListingType,
+        sellingPrice: finalSellingPrice,
+        brand: brandValue,
+        voucherValue: parsedVoucherValue.value,
         categoryId: finalCategoryId || null,
       },
     });

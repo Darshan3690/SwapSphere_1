@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
+import { jsonError, readJsonObject, trimmedString } from "@/lib/api";
 
 export async function GET(request: Request) {
   try {
@@ -57,7 +58,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const body = await readJsonObject(request);
+    if (!body) {
+      return jsonError("Invalid JSON request body", 400);
+    }
+
     const { revieweeId, rating, comment } = body;
 
     if (!revieweeId || rating === undefined) {
@@ -73,6 +78,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "You cannot review yourself" }, { status: 400 });
     }
 
+    if (typeof revieweeId !== "string") {
+      return jsonError("Invalid reviewee id", 400);
+    }
+
     // Verify the reviewee profile exists
     const reviewee = await prisma.profile.findUnique({
       where: { id: revieweeId },
@@ -82,12 +91,42 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Reviewee not found" }, { status: 404 });
     }
 
+    const completedTrade = await prisma.swapRequest.findFirst({
+      where: {
+        status: "Completed",
+        OR: [
+          { senderId: userId, receiverId: revieweeId },
+          { senderId: revieweeId, receiverId: userId },
+        ],
+      },
+    });
+
+    if (!completedTrade) {
+      return jsonError("You can only review users after completing a trade with them", 403);
+    }
+
+    const existingReview = await prisma.review.findFirst({
+      where: {
+        reviewerId: userId,
+        revieweeId,
+      },
+    });
+
+    if (existingReview) {
+      return jsonError("You have already reviewed this user", 409);
+    }
+
+    const commentValue = trimmedString(comment);
+    if (commentValue && commentValue.length > 1000) {
+      return jsonError("Review comment must be 1000 characters or fewer", 400);
+    }
+
     const review = await prisma.review.create({
       data: {
         reviewerId: userId,
         revieweeId,
         rating: numericRating,
-        comment: comment?.trim() || null,
+        comment: commentValue,
       },
     });
 

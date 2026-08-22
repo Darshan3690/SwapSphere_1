@@ -166,6 +166,7 @@ export default function ChatWindow({ swapRequestId }: ChatWindowProps) {
           type="text"
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
+          maxLength={1000}
           placeholder="Type your message..."
           className="flex-1 rounded-xl bg-slate-50 border border-slate-200 px-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 transition-all"
         />

@@ -12,6 +12,7 @@ interface Item {
   condition: string;
   image_url: string | null;
   status: string;
+  listing_type?: string;
 }
 
 interface SwapModalProps {
@@ -54,8 +55,8 @@ export default function SwapModal({
       
       const data = await response.json();
       
-      // Filter out only available items
-      const availableItems = data.filter((item: any) => item.status === "Available");
+      // Filter out only available items that can be swapped.
+      const availableItems = data.filter((item: Item) => item.status === "Available" && item.listing_type !== "SELL_ONLY");
       
       setMyItems(availableItems || []);
       if (availableItems && availableItems.length > 0) {
@@ -92,20 +93,6 @@ export default function SwapModal({
       }
 
       const data = await response.json();
-
-      // 2. Set the status of BOTH items to "Pending" via custom PATCH requests on our backend
-      // We perform PATCH calls to secure database integrity.
-      await fetch(`/api/items/${selectedItemId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "Pending" }),
-      });
-
-      await fetch(`/api/items/${receiverItemId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "Pending" }),
-      });
 
       onSuccess(data.swapRequestId);
     } catch (err: any) {

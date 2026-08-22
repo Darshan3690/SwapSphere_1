@@ -491,6 +491,14 @@ export default function AdminPage() {
                                     {u.isVerified ? "Unverify" : "Verify"}
                                   </button>
                                   <button
+                                    onClick={() => handleAction("toggle_admin", { userId: u.id, status: u.role !== "ADMIN" })}
+                                    className={`px-2 py-1 rounded-md text-[10px] font-bold cursor-pointer transition-colors ${
+                                      u.role === "ADMIN" ? "bg-slate-100 text-slate-600" : "bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100"
+                                    }`}
+                                  >
+                                    {u.role === "ADMIN" ? "Revoke Admin" : "Make Admin"}
+                                  </button>
+                                  <button
                                     onClick={() => handleAction("suspend_user", { userId: u.id, status: !u.isSuspended })}
                                     className="px-2 py-1 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 cursor-pointer"
                                   >

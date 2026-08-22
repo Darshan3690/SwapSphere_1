@@ -1,6 +1,24 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
+import { isSwapStatus, isValidObjectId, jsonError, readJsonObject, SwapStatus } from "@/lib/api";
+
+const TERMINAL_SWAP_STATUSES = ["Rejected", "Completed", "Cancelled"] as const;
+
+function isTerminalStatus(status: string) {
+  return TERMINAL_SWAP_STATUSES.includes(status as (typeof TERMINAL_SWAP_STATUSES)[number]);
+}
+
+async function hasOtherActiveSwap(itemId: string, currentSwapId: string) {
+  const count = await prisma.swapRequest.count({
+    where: {
+      id: { not: currentSwapId },
+      status: { in: ["Pending", "Accepted"] },
+      OR: [{ senderItemId: itemId }, { receiverItemId: itemId }],
+    },
+  });
+  return count > 0;
+}
 
 export async function GET(
   request: Request,
@@ -8,6 +26,10 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    if (!isValidObjectId(id)) {
+      return jsonError("Invalid swap id", 400);
+    }
+
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -112,6 +134,10 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
+    if (!isValidObjectId(id)) {
+      return jsonError("Invalid swap id", 400);
+    }
+
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -119,6 +145,10 @@ export async function PATCH(
 
     const swap = await prisma.swapRequest.findUnique({
       where: { id },
+      include: {
+        senderItem: true,
+        receiverItem: true,
+      },
     });
 
     if (!swap) {
@@ -130,34 +160,113 @@ export async function PATCH(
       return NextResponse.json({ error: "Forbidden: You are not authorized" }, { status: 403 });
     }
 
-    const body = await request.json();
+    const body = await readJsonObject(request);
+    if (!body) {
+      return jsonError("Invalid JSON request body", 400);
+    }
+
     const { status } = body;
 
-    if (!["Accepted", "Rejected", "Cancelled", "Completed"].includes(status)) {
+    if (!isSwapStatus(status) || status === "Pending") {
       return NextResponse.json({ error: "Invalid swap status" }, { status: 400 });
     }
+
+    const nextStatus = status as SwapStatus;
+    if (isTerminalStatus(swap.status)) {
+      return jsonError("This swap is already closed", 409);
+    }
+
+    if (swap.status === "Pending") {
+      if ((nextStatus === "Accepted" || nextStatus === "Rejected") && swap.receiverId !== userId) {
+        return jsonError("Only the receiver can accept or reject this proposal", 403);
+      }
+      if (nextStatus === "Cancelled" && swap.senderId !== userId) {
+        return jsonError("Only the sender can retract this proposal", 403);
+      }
+      if (nextStatus === "Completed") {
+        return jsonError("A pending proposal must be accepted before it can be completed", 400);
+      }
+    }
+
+    if (swap.status === "Accepted") {
+      if (nextStatus === "Accepted" || nextStatus === "Rejected") {
+        return jsonError("Accepted swaps can only be completed or cancelled", 400);
+      }
+    }
+
+    const itemIds = [swap.senderItemId, swap.receiverItemId].filter(Boolean) as string[];
+    if (nextStatus === "Accepted") {
+      const itemsStillReserved = [swap.senderItem, swap.receiverItem].filter(Boolean).every((item) =>
+        item!.status === "Pending" && !item!.isDeleted && item!.verificationStatus === "Approved"
+      );
+      if (!itemsStillReserved) {
+        return jsonError("One of the listings is no longer available for this swap", 409);
+      }
+    }
+
+    if (nextStatus === "Completed" && (swap.senderItem?.isCoupon || swap.receiverItem?.isCoupon)) {
+      const deposits = await prisma.escrowDeposit.findMany({
+        where: { swapRequestId: swap.id },
+      });
+      const senderDeposit = deposits.find((d) => d.depositorId === swap.senderId);
+      const receiverDeposit = deposits.find((d) => d.depositorId === swap.receiverId);
+
+      if (!senderDeposit || !receiverDeposit) {
+        return jsonError("Both parties must complete escrow before the trade can be completed", 400);
+      }
+
+      if ([senderDeposit, receiverDeposit].some((d) => d.verificationStatus === "invalid")) {
+        return jsonError("Escrow contains an invalid deposit", 400);
+      }
+
+      const hasPhysical = [senderDeposit, receiverDeposit].some((d) => d.couponCode === "PHYSICAL_HANDOVER");
+      const digitalDepositVerified = [senderDeposit, receiverDeposit].some(
+        (d) => d.couponCode !== "PHYSICAL_HANDOVER" && d.verificationStatus === "verified"
+      );
+
+      if (hasPhysical && !digitalDepositVerified) {
+        return jsonError("Physical handover must be confirmed before completing this trade", 400);
+      }
+
+      const expiredDeposit = [senderDeposit, receiverDeposit].find(
+        (d) => d.couponExpiry && d.couponExpiry <= new Date()
+      );
+      if (expiredDeposit) {
+        return jsonError("An escrowed coupon has expired", 400);
+      }
+    }
+
+    const itemIdsToRestore =
+      nextStatus === "Rejected" || nextStatus === "Cancelled"
+        ? (
+            await Promise.all(
+              itemIds.map(async (itemId) => ({
+                itemId,
+                hasOtherActive: await hasOtherActiveSwap(itemId, id),
+              }))
+            )
+          )
+            .filter((entry) => !entry.hasOtherActive)
+            .map((entry) => entry.itemId)
+        : [];
 
     // Execute updates inside a transaction for structural safety
     const updatedSwap = await prisma.$transaction(async (tx) => {
       // 1. Update the Swap Request status
       const updated = await tx.swapRequest.update({
         where: { id },
-        data: { status },
+        data: { status: nextStatus },
       });
 
       // 2. Synchronize item statuses
-      if (status === "Rejected" || status === "Cancelled") {
-        if (swap.senderItemId) {
+      if (nextStatus === "Rejected" || nextStatus === "Cancelled") {
+        for (const itemId of itemIdsToRestore) {
           await tx.item.update({
-            where: { id: swap.senderItemId },
+            where: { id: itemId },
             data: { status: "Available" },
           });
         }
-        await tx.item.update({
-          where: { id: swap.receiverItemId },
-          data: { status: "Available" },
-        });
-      } else if (status === "Completed") {
+      } else if (nextStatus === "Completed") {
         if (swap.senderItemId) {
           await tx.item.update({
             where: { id: swap.senderItemId },
@@ -168,7 +277,7 @@ export async function PATCH(
           where: { id: swap.receiverItemId },
           data: { status: "Swapped" },
         });
-      } else if (status === "Accepted") {
+      } else if (nextStatus === "Accepted") {
         // Mark items as Pending during swap acceptance
         if (swap.senderItemId) {
           await tx.item.update({
@@ -187,7 +296,7 @@ export async function PATCH(
         const actingProfile = await tx.profile.findUnique({ where: { id: userId } });
         const actingUsername = actingProfile?.username || "A swapper";
 
-        if (status === "Accepted") {
+        if (nextStatus === "Accepted") {
           await tx.notification.create({
             data: {
               userId: swap.senderId,
@@ -196,7 +305,7 @@ export async function PATCH(
               isRead: false,
             },
           });
-        } else if (status === "Rejected") {
+        } else if (nextStatus === "Rejected") {
           await tx.notification.create({
             data: {
               userId: swap.senderId,
@@ -205,7 +314,7 @@ export async function PATCH(
               isRead: false,
             },
           });
-        } else if (status === "Completed") {
+        } else if (nextStatus === "Completed") {
           // Notify both users
           await tx.notification.create({
             data: {

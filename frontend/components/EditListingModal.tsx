@@ -52,7 +52,6 @@ export default function EditListingModal({
   const [category, setCategory] = useState("Electronics");
   const [condition, setCondition] = useState("Good");
   const [preferredTrade, setPreferredTrade] = useState("");
-  const [price, setPrice] = useState("");
   const [couponCode, setCouponCode] = useState("");
   const [couponExpiry, setCouponExpiry] = useState("");
   const [loading, setLoading] = useState(false);
@@ -71,7 +70,6 @@ export default function EditListingModal({
       setCategory(item.category || "Electronics");
       setCondition(item.condition || "Good");
       setPreferredTrade(item.preferred_trade || "");
-      setPrice(item.price !== undefined && item.price !== null ? String(item.price) : "");
       setCouponCode(item.couponCode || "");
       
       setListingType((item.listing_type as any) || "SWAP_ONLY");
@@ -101,6 +99,37 @@ export default function EditListingModal({
     }
     if (!description.trim()) {
       setError("Please enter a description.");
+      return;
+    }
+    if (!couponCode.trim()) {
+      setError("Please enter the coupon code.");
+      return;
+    }
+    if (!couponExpiry) {
+      setError("Please set an expiry date.");
+      return;
+    }
+    if (listingType !== "SWAP_ONLY" && !sellingPrice.trim()) {
+      setError("Please enter a selling price.");
+      return;
+    }
+    const parsedSellingPrice = Number(sellingPrice);
+    if (listingType !== "SWAP_ONLY" && (!Number.isInteger(parsedSellingPrice) || parsedSellingPrice <= 0)) {
+      setError("Selling price must be a positive whole number.");
+      return;
+    }
+    if (voucherValue.trim()) {
+      const parsedVoucherValue = Number(voucherValue);
+      if (!Number.isInteger(parsedVoucherValue) || parsedVoucherValue <= 0) {
+        setError("Voucher value must be a positive whole number.");
+        return;
+      }
+    }
+    const expiry = new Date(couponExpiry);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (expiry <= today) {
+      setError("Coupon expiry date must be in the future.");
       return;
     }
 

@@ -3,6 +3,24 @@ import { headers } from "next/headers";
 import { WebhookEvent } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 
+function normalizeUsername(value: string) {
+  return value.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 40) || "user";
+}
+
+async function uniqueUsername(baseValue: string, userId: string) {
+  const base = normalizeUsername(baseValue);
+  const existing = await prisma.profile.findUnique({ where: { username: base } });
+  if (!existing || existing.id === userId) return base;
+
+  for (let index = 1; index <= 5; index += 1) {
+    const candidate = `${base}_${index}`;
+    const match = await prisma.profile.findUnique({ where: { username: candidate } });
+    if (!match || match.id === userId) return candidate;
+  }
+
+  return normalizeUsername(`${base}_${userId.slice(-8)}`);
+}
+
 export async function POST(req: Request) {
   const WEBHOOK_SECRET = process.env.SVIX_WEBHOOK_SECRET;
 
@@ -55,13 +73,19 @@ export async function POST(req: Request) {
     const email = email_addresses[0]?.email_address;
     
     // Generate a username if Clerk doesn't provide one
-    const generatedUsername = username || email?.split("@")[0] || `user_${Math.floor(1000 + Math.random() * 9000)}`;
+    const generatedUsername = await uniqueUsername(username || email?.split("@")[0] || `user_${id.slice(-8)}`, id);
     const name = [first_name, last_name].filter(Boolean).join(" ");
 
     try {
-      await prisma.profile.create({
-        data: {
-          id: id,
+      await prisma.profile.upsert({
+        where: { id },
+        create: {
+          id,
+          username: generatedUsername,
+          fullName: name || null,
+          avatarUrl: image_url || null,
+        },
+        update: {
           username: generatedUsername,
           fullName: name || null,
           avatarUrl: image_url || null,

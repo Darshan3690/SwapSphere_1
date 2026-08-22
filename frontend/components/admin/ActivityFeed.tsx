@@ -14,6 +14,14 @@ interface ActivityFeedProps {
   logs: ActivityItem[];
 }
 
+const SAMPLE_LOGS: ActivityItem[] = [
+  { id: "1", action: "User @alex_trader listed Amazon $50 Voucher", type: "voucher", createdAt: "2026-01-01T09:04:00.000Z" },
+  { id: "2", action: "System verified double escrow deposit for Trade #tr_821", type: "security", createdAt: "2026-01-01T08:52:00.000Z" },
+  { id: "3", action: "New user registered via Clerk: darshan.rajput369@gmail.com", type: "user", createdAt: "2026-01-01T08:39:00.000Z" },
+  { id: "4", action: "Admin approved listing 'PVR Movie Ticket'", type: "audit", createdAt: "2026-01-01T08:19:00.000Z" },
+  { id: "5", action: "Trade completed between @john_doe and @sam_vouchers", type: "trade", createdAt: "2026-01-01T07:34:00.000Z" },
+];
+
 export function ActivityFeed({ logs }: ActivityFeedProps) {
   const getIcon = (type?: string, action?: string) => {
     const act = (action || "").toLowerCase();
@@ -35,15 +43,7 @@ export function ActivityFeed({ logs }: ActivityFeedProps) {
     return <FileText className="h-3.5 w-3.5 text-slate-500" />;
   };
 
-  const sampleLogs: ActivityItem[] = [
-    { id: "1", action: "User @alex_trader listed Amazon $50 Voucher", type: "voucher", createdAt: new Date(Date.now() - 1000 * 60 * 4).toISOString() },
-    { id: "2", action: "System verified double escrow deposit for Trade #tr_821", type: "security", createdAt: new Date(Date.now() - 1000 * 60 * 12).toISOString() },
-    { id: "3", action: "New user registered via Clerk: darshan.rajput369@gmail.com", type: "user", createdAt: new Date(Date.now() - 1000 * 60 * 25).toISOString() },
-    { id: "4", action: "Admin approved listing 'PVR Movie Ticket'", type: "audit", createdAt: new Date(Date.now() - 1000 * 60 * 45).toISOString() },
-    { id: "5", action: "Trade completed between @john_doe and @sam_vouchers", type: "trade", createdAt: new Date(Date.now() - 1000 * 60 * 90).toISOString() },
-  ];
-
-  const displayLogs = logs && logs.length > 0 ? logs : sampleLogs;
+  const displayLogs = logs && logs.length > 0 ? logs : SAMPLE_LOGS;
 
   return (
     <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm space-y-4">

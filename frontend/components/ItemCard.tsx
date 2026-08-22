@@ -16,6 +16,9 @@ export interface Item {
   is_coupon?: boolean;
   coupon_expiry?: string | null;
   created_at: string;
+  listing_type?: "SWAP_ONLY" | "SELL_ONLY" | "SWAP_AND_SELL";
+  selling_price?: number | null;
+  price?: number | null;
   profiles?: {
     username: string;
     avatar_url: string | null;
@@ -37,6 +40,13 @@ export default function ItemCard({ item }: ItemCardProps) {
 
   const daysLeft = getDaysUntilExpiry();
   const isExpiringSoon = daysLeft !== null && daysLeft <= 7;
+  const sellingPrice = item.selling_price ?? item.price;
+  const listingLabel =
+    item.listing_type === "SELL_ONLY"
+      ? "Buy"
+      : item.listing_type === "SWAP_AND_SELL"
+      ? "Swap + Buy"
+      : "Swap";
 
   const statusColors: Record<string, { bg: string; text: string; border: string }> = {
     Available:  { bg: "#f0fdf4", text: "#15803d", border: "#bbf7d0" },
@@ -75,6 +85,10 @@ export default function ItemCard({ item }: ItemCardProps) {
           </span>
         )}
 
+        <span className="absolute bottom-3 left-3 z-10 rounded-md border border-white/40 bg-slate-950/80 px-2.5 py-1 text-[10px] font-bold text-white shadow-xs">
+          {listingLabel}
+        </span>
+
         {/* Status badge (non-Available) */}
         {item.status !== "Available" && (
           <span
@@ -94,7 +108,7 @@ export default function ItemCard({ item }: ItemCardProps) {
             {item.category}
           </span>
           <span className="text-[10px] font-medium text-slate-400">
-            {item.condition}
+            {sellingPrice && item.listing_type !== "SWAP_ONLY" ? `₹${sellingPrice}` : item.condition}
           </span>
         </div>
 

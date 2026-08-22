@@ -1,6 +1,36 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
+import {
+  isEscrowStatus,
+  isValidObjectId,
+  jsonError,
+  parseFutureDate,
+  readJsonObject,
+  trimmedString,
+} from "@/lib/api";
+
+const PHYSICAL_HANDOVER_CODE = "PHYSICAL_HANDOVER";
+
+type EscrowDepositForReveal = {
+  depositorId: string;
+  couponCode: string;
+  verificationStatus: string;
+};
+
+function escrowCanReveal(deposits: EscrowDepositForReveal[]) {
+  if (deposits.length < 2) return false;
+  if (deposits.some((deposit) => deposit.verificationStatus === "invalid")) return false;
+
+  const hasPhysical = deposits.some((deposit) => deposit.couponCode === PHYSICAL_HANDOVER_CODE);
+  if (!hasPhysical) return true;
+
+  return deposits.some(
+    (deposit) =>
+      deposit.couponCode !== PHYSICAL_HANDOVER_CODE &&
+      deposit.verificationStatus === "verified"
+  );
+}
 
 export async function GET(request: Request) {
   try {
@@ -14,6 +44,10 @@ export async function GET(request: Request) {
 
     if (!swapRequestId) {
       return NextResponse.json({ error: "Missing swapRequestId parameter" }, { status: 400 });
+    }
+
+    if (!isValidObjectId(swapRequestId)) {
+      return jsonError("Invalid swap request id", 400);
     }
 
     // Verify user belongs to the swap request
@@ -33,13 +67,24 @@ export async function GET(request: Request) {
       where: { swapRequestId },
     });
 
+    const canReveal = escrowCanReveal(deposits);
+
     // Adapt to SQL naming format expected by frontend
     const adaptedDeposits = deposits.map((dep) => ({
       id: dep.id,
       swap_request_id: dep.swapRequestId,
       depositor_id: dep.depositorId,
       item_id: dep.itemId,
-      coupon_code: dep.couponCode,
+      coupon_code:
+        dep.depositorId === userId ||
+        canReveal ||
+        dep.couponCode === PHYSICAL_HANDOVER_CODE
+          ? dep.couponCode
+          : null,
+      is_revealed:
+        dep.depositorId === userId ||
+        canReveal ||
+        dep.couponCode === PHYSICAL_HANDOVER_CODE,
       coupon_expiry: dep.couponExpiry ? dep.couponExpiry.toISOString() : null,
       verification_status: dep.verificationStatus,
       deposited_at: dep.depositedAt.toISOString(),
@@ -59,16 +104,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const body = await readJsonObject(request);
+    if (!body) {
+      return jsonError("Invalid JSON request body", 400);
+    }
+
     const { swapRequestId, itemId, couponCode, couponExpiry, verificationStatus } = body;
 
     if (!swapRequestId || !itemId || !couponCode) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    if (!isValidObjectId(swapRequestId) || !isValidObjectId(itemId)) {
+      return jsonError("Invalid escrow request identifiers", 400);
+    }
+
+    const couponCodeValue = trimmedString(couponCode);
+    if (!couponCodeValue) {
+      return jsonError("Coupon code is required", 400);
+    }
+
     // Verify user belongs to the swap request
     const swap = await prisma.swapRequest.findUnique({
       where: { id: swapRequestId },
+      include: {
+        senderItem: true,
+        receiverItem: true,
+      },
     });
 
     if (!swap) {
@@ -79,9 +141,37 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Forbidden: You are not authorized" }, { status: 403 });
     }
 
-    const expiryDate = couponExpiry ? new Date(couponExpiry) : null;
-    if (expiryDate && expiryDate <= new Date()) {
-      return NextResponse.json({ error: "This coupon is expired" }, { status: 400 });
+    if (swap.status !== "Accepted") {
+      return jsonError("Escrow deposits can only be submitted for accepted swaps", 400);
+    }
+
+    const userItemId = swap.senderId === userId ? swap.senderItemId : swap.receiverItemId;
+    const userItem = swap.senderId === userId ? swap.senderItem : swap.receiverItem;
+    if (itemId !== userItemId || !userItem) {
+      return jsonError("Escrow item does not belong to you in this swap", 403);
+    }
+
+    const normalizedCouponCode = couponCodeValue.toUpperCase();
+    if (userItem.isCoupon && normalizedCouponCode === PHYSICAL_HANDOVER_CODE) {
+      return jsonError("Digital coupon listings must deposit the actual coupon code", 400);
+    }
+    if (!userItem.isCoupon && normalizedCouponCode !== PHYSICAL_HANDOVER_CODE) {
+      return jsonError("Physical listings must use the physical handover confirmation", 400);
+    }
+
+    let expiryDate: Date | null = null;
+    if (userItem.isCoupon) {
+      const parsedExpiry = couponExpiry
+        ? parseFutureDate(couponExpiry, "Coupon expiry date")
+        : { value: null, error: undefined };
+      if (parsedExpiry.error) {
+        return jsonError(parsedExpiry.error, 400);
+      }
+      expiryDate = parsedExpiry.value;
+    }
+
+    if (verificationStatus && verificationStatus !== "pending") {
+      return jsonError("New escrow deposits must start as pending", 400);
     }
 
     // Create deposit
@@ -90,9 +180,9 @@ export async function POST(request: Request) {
         swapRequestId,
         depositorId: userId,
         itemId,
-        couponCode: couponCode.trim().toUpperCase(),
+        couponCode: normalizedCouponCode,
         couponExpiry: expiryDate,
-        verificationStatus: verificationStatus || "pending",
+        verificationStatus: "pending",
       },
     });
 
@@ -114,11 +204,23 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const body = await readJsonObject(request);
+    if (!body) {
+      return jsonError("Invalid JSON request body", 400);
+    }
+
     const { id, verificationStatus } = body;
 
     if (!id || !verificationStatus) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    if (!isValidObjectId(id)) {
+      return jsonError("Invalid escrow deposit id", 400);
+    }
+
+    if (!isEscrowStatus(verificationStatus) || verificationStatus === "pending") {
+      return jsonError("Invalid verification status", 400);
     }
 
     // Verify user is authorized (they own the deposit or are the other party in the swap)
@@ -137,6 +239,14 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    if (deposit.swapRequest.status !== "Accepted") {
+      return jsonError("Escrow status can only be updated while the swap is accepted", 400);
+    }
+
+    if (deposit.depositorId !== userId) {
+      return jsonError("You can only verify your own escrow deposit", 403);
+    }
+
     const updated = await prisma.escrowDeposit.update({
       where: { id },
       data: {
@@ -147,6 +257,6 @@ export async function PATCH(request: Request) {
     return NextResponse.json(updated, { status: 200 });
   } catch (error: any) {
     console.error("PATCH Escrow Deposit Error:", error);
-    return NextResponse.json({ error: "Failed to update deposit verification status" }, { status: 550 });
+    return NextResponse.json({ error: "Failed to update deposit verification status" }, { status: 500 });
   }
 }

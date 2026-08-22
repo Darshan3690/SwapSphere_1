@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
+import { isValidObjectId, jsonError, readJsonObject, trimmedString } from "@/lib/api";
 
 export async function GET(request: Request) {
   try {
@@ -14,6 +15,10 @@ export async function GET(request: Request) {
 
     if (!swapRequestId) {
       return NextResponse.json({ error: "Missing swapRequestId parameter" }, { status: 400 });
+    }
+
+    if (!isValidObjectId(swapRequestId)) {
+      return jsonError("Invalid swap request id", 400);
     }
 
     // Verify user is part of the swap request to protect chat privacy
@@ -71,11 +76,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { swapRequestId, content } = body;
+    const body = await readJsonObject(request);
+    if (!body) {
+      return jsonError("Invalid JSON request body", 400);
+    }
 
-    if (!swapRequestId || !content?.trim()) {
+    const { swapRequestId, content } = body;
+    const contentValue = trimmedString(content);
+
+    if (!swapRequestId || !contentValue) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    if (!isValidObjectId(swapRequestId)) {
+      return jsonError("Invalid swap request id", 400);
+    }
+
+    if (contentValue.length > 1000) {
+      return jsonError("Messages must be 1000 characters or fewer", 400);
     }
 
     // Verify user is part of the swap request
@@ -91,12 +109,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Forbidden: You are not authorized" }, { status: 403 });
     }
 
+    if (swap.status === "Rejected" || swap.status === "Cancelled") {
+      return jsonError("This negotiation is closed", 400);
+    }
+
     // Create the message in MongoDB
     const newMessage = await prisma.message.create({
       data: {
         swapRequestId,
         senderId: userId,
-        content: content.trim(),
+        content: contentValue,
       },
     });
 

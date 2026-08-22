@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import Navbar from "@/components/Navbar";
-import { Upload, AlertCircle, RefreshCw, ArrowLeft, Info, ShieldCheck, Ticket } from "lucide-react";
+import { Upload, AlertCircle, RefreshCw, ArrowLeft, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
 const CATEGORIES = ["Electronics", "Books", "Fashion", "Home", "Games", "Sports", "Other"];
@@ -36,7 +36,6 @@ export default function NewItem() {
   const [error, setError] = useState<string | null>(null);
   const [couponCode, setCouponCode] = useState("");
   const [couponExpiry, setCouponExpiry] = useState("");
-  const [price, setPrice] = useState("");
 
   const [listingType, setListingType] = useState<"SWAP_ONLY" | "SELL_ONLY" | "SWAP_AND_SELL">("SWAP_ONLY");
   const [sellingPrice, setSellingPrice] = useState("");
@@ -81,6 +80,20 @@ export default function NewItem() {
     if (!couponCode.trim()) { setError("Please enter the coupon code."); return false; }
     if (!couponExpiry) { setError("Please set an expiry date."); return false; }
     if (listingType !== "SWAP_ONLY" && !sellingPrice.trim()) { setError("Please enter a selling price."); return false; }
+
+    const parsedSellingPrice = Number(sellingPrice);
+    if (listingType !== "SWAP_ONLY" && (!Number.isInteger(parsedSellingPrice) || parsedSellingPrice <= 0)) {
+      setError("Selling price must be a positive whole number.");
+      return false;
+    }
+
+    if (voucherValue.trim()) {
+      const parsedVoucherValue = Number(voucherValue);
+      if (!Number.isInteger(parsedVoucherValue) || parsedVoucherValue <= 0) {
+        setError("Voucher worth value must be a positive whole number.");
+        return false;
+      }
+    }
 
     const expiry = new Date(couponExpiry);
     const today = new Date();
