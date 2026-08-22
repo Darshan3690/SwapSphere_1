@@ -1,7 +1,21 @@
 import { NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
+import { v2 as cloudinary } from "cloudinary";
 import { auth } from "@clerk/nextjs/server";
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+};
 
 export async function POST(request: Request) {
   try {
@@ -24,38 +38,37 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No valid image file provided" }, { status: 400 });
     }
 
+    if (file.size > MAX_IMAGE_SIZE) {
+      return NextResponse.json({ error: "Image must be under 5 MB" }, { status: 413 });
+    }
+
+    const safeExtension = ALLOWED_IMAGE_TYPES[file.type];
+    if (!safeExtension) {
+      return NextResponse.json({ error: "Only JPG, PNG, WebP, or GIF images are allowed" }, { status: 400 });
+    }
+
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Determine extension and clean user ID for filename
-    let fileExt = "jpg";
-    if (file.name && file.name.includes(".")) {
-      fileExt = file.name.split(".").pop() || "jpg";
-    } else if (file.type) {
-      fileExt = file.type.split("/").pop() || "jpg";
-    }
-    const cleanExt = fileExt.replace(/[^a-zA-Z0-9]/g, "").toLowerCase() || "jpg";
-    const cleanUserId = userId.replace(/[^a-zA-Z0-9_-]/g, "_");
+    // Upload to Cloudinary using a Promise
+    const uploadResult = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder: "swapsphere_uploads" }, // Optional: organizes your images in a folder
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+      
+      // End the stream with the buffer
+      uploadStream.end(buffer);
+    }) as any;
 
-    const uniqueName = `${cleanUserId}-${Date.now()}.${cleanExt}`;
+    // Return the secure URL from Cloudinary
+    return NextResponse.json({ imageUrl: uploadResult.secure_url }, { status: 200 });
 
-    try {
-      // Attempt to save to public/uploads
-      const uploadDir = join(process.cwd(), "public", "uploads");
-      await mkdir(uploadDir, { recursive: true });
-      const filePath = join(uploadDir, uniqueName);
-      await writeFile(filePath, buffer);
-
-      return NextResponse.json({ imageUrl: `/uploads/${uniqueName}` }, { status: 200 });
-    } catch (fsError) {
-      console.warn("Disk save failed, falling back to base64 data URL:", fsError);
-      const mimeType = file.type || "image/jpeg";
-      const base64Data = buffer.toString("base64");
-      const dataUrl = `data:${mimeType};base64,${base64Data}`;
-      return NextResponse.json({ imageUrl: dataUrl }, { status: 200 });
-    }
   } catch (error: any) {
-    console.error("Local Upload Error:", error);
+    console.error("Cloudinary Upload Error:", error);
     return NextResponse.json(
       { error: error?.message || "File upload failed" },
       { status: 500 }
